@@ -1,0 +1,2457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Risk Profiler | Compensation, Risk, Analytics, and Fairness Team</title>
+<script src="https://cdn.jsdelivr.net/npm/highcharts@12.1.2/highcharts.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highcharts@12.1.2/highcharts-more.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highcharts@12.1.2/modules/heatmap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highcharts@12.1.2/modules/accessibility.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root {
+  --app-primary: #0052CC;
+  --app-primary-light: rgba(0,82,204,0.08);
+  --app-success: #36b37e;
+  --app-success-light: rgba(54,179,126,0.1);
+  --app-warning: #ff991f;
+  --app-warning-light: rgba(255,153,31,0.1);
+  --app-error: #de350b;
+  --app-error-light: rgba(222,53,11,0.08);
+  --app-info: #0065ff;
+  --risk-very-low: #36b37e;
+  --risk-low: #57d9a3;
+  --risk-moderate: #ff991f;
+  --risk-high: #ff5630;
+  --risk-very-high: #de350b;
+  --risk-critical: #8b0000;
+
+  --color-bg: #f4f5f7;
+  --color-bg-secondary: #f4f5f7;
+  --color-surface: #ffffff;
+  --color-surface-hover: rgba(0,0,0,0.04);
+  --color-text: #172b4d;
+  --color-text-secondary: #44546f;
+  --color-text-muted: #8993a4;
+  --color-border: #dfe1e6;
+  --color-border-light: #ebecf0;
+  --color-primary: #0052CC;
+  --color-success: #36b37e;
+  --color-error: #de350b;
+  --color-warning: #ff991f;
+  --color-info: #0065ff;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', Consolas, monospace;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-pill: 100px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  background: var(--color-bg, #f4f5f7);
+  color: var(--color-text, #172b4d);
+  line-height: 1.5;
+}
+
+/* Layout */
+.app-container { display: flex; height: 100vh; overflow: hidden; }
+.sidebar {
+  width: 280px;
+  background: var(--color-surface, #fff);
+  border-right: 1px solid var(--color-border-light, #ebecf0);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.sidebar-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border-light, #ebecf0);
+}
+.sidebar-header h1 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text, #172b4d);
+}
+.sidebar-header p {
+  font-size: 11px;
+  color: var(--color-text-muted, #8993a4);
+  margin-top: 2px;
+}
+.sidebar-nav { flex: 1; overflow-y: auto; padding: 8px 0; }
+.nav-section { padding: 8px 16px 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted, #8993a4); }
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 20px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text-secondary, #44546f);
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+}
+.nav-item:hover { background: var(--color-surface-hover, rgba(0,0,0,0.04)); }
+.nav-item.active {
+  background: var(--app-primary-light);
+  color: var(--app-primary);
+  border-left-color: var(--app-primary);
+  font-weight: 500;
+}
+.nav-item i { width: 16px; text-align: center; font-size: 12px; }
+.risk-count {
+  margin-left: auto;
+  background: var(--color-bg-secondary, #f4f5f7);
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.sidebar-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--color-border-light, #ebecf0);
+}
+
+/* Main Content */
+.main-content { flex: 1; overflow-y: auto; padding: 24px 32px; }
+.page-header { margin-bottom: 24px; }
+.page-header h2 { font-size: 22px; font-weight: 700; }
+.page-header p { color: var(--color-text-secondary, #44546f); font-size: 13px; margin-top: 4px; }
+
+/* Cards */
+.card {
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border-light, #ebecf0);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.card-title { font-size: 14px; font-weight: 600; }
+.card-subtitle { font-size: 12px; color: var(--color-text-muted, #8993a4); margin-top: 2px; }
+
+/* Forms */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-grid.three-col { grid-template-columns: 1fr 1fr 1fr; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group.full-width { grid-column: 1 / -1; }
+.form-label { font-size: 12px; font-weight: 500; color: var(--color-text-secondary, #44546f); }
+.form-input, .form-select, .form-textarea {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border, #dfe1e6);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #172b4d);
+  transition: border-color 0.15s;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  outline: none;
+  border-color: var(--app-primary);
+  box-shadow: 0 0 0 2px rgba(0,82,204,0.1);
+}
+.form-textarea { resize: vertical; min-height: 60px; }
+
+/* Rating Selector */
+.rating-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 8px; }
+.rating-factor {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  background: var(--color-bg-secondary, #f4f5f7);
+  border-radius: 8px;
+  border: 1px solid var(--color-border-light, #ebecf0);
+}
+.factor-label { font-size: 12px; font-weight: 600; color: var(--color-text, #172b4d); }
+.factor-desc { font-size: 11px; color: var(--color-text-muted, #8993a4); margin-top: 2px; }
+.factor-options { display: flex; gap: 4px; flex-wrap: wrap; }
+.factor-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--color-border, #dfe1e6);
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  background: var(--color-surface, #fff);
+  color: var(--color-text-secondary, #44546f);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.factor-btn:hover { border-color: var(--app-primary); color: var(--app-primary); }
+.factor-btn.selected { background: var(--app-primary); color: #fff; border-color: var(--app-primary); }
+.factor-btn[data-level="1"].selected { background: var(--risk-very-low); border-color: var(--risk-very-low); }
+.factor-btn[data-level="2"].selected { background: var(--risk-low); border-color: var(--risk-low); }
+.factor-btn[data-level="3"].selected { background: var(--risk-moderate); border-color: var(--risk-moderate); color: #000; }
+.factor-btn[data-level="4"].selected { background: var(--risk-high); border-color: var(--risk-high); }
+.factor-btn[data-level="5"].selected { background: var(--risk-very-high); border-color: var(--risk-very-high); }
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.badge-very-low { background: rgba(54,179,126,0.12); color: #006644; }
+.badge-low { background: rgba(87,217,163,0.15); color: #006644; }
+.badge-moderate { background: rgba(255,153,31,0.12); color: #974F0C; }
+.badge-high { background: rgba(255,86,48,0.12); color: #BF2600; }
+.badge-very-high { background: rgba(222,53,11,0.1); color: #BF2600; }
+.badge-critical { background: rgba(139,0,0,0.1); color: #8b0000; }
+.badge-not-rated { background: var(--color-bg-secondary, #f4f5f7); color: var(--color-text-muted, #8993a4); }
+.badge-strong { background: rgba(0,82,204,0.1); color: #0052CC; }
+.badge-satisfactory { background: rgba(54,179,126,0.12); color: #006644; }
+.badge-marginal { background: rgba(255,196,0,0.15); color: #974F0C; }
+.badge-needs-improvement { background: rgba(255,153,31,0.15); color: #974F0C; }
+.badge-weak { background: rgba(222,53,11,0.1); color: #BF2600; }
+.badge-stale { background: rgba(255,153,31,0.15); color: #974F0C; }
+.badge-closed { background: rgba(139,0,0,0.08); color: var(--color-text-muted, #8993a4); }
+.risk-row-closed { opacity: 0.6; }
+.trend-arrow { font-weight:700; margin-left:4px; }
+.trend-up { color: var(--app-error); }
+.trend-down { color: var(--app-success); }
+.trend-flat { color: var(--color-text-muted, #8993a4); }
+
+/* Compliance Mechanism Slider */
+.compliance-slider-track {
+  position: relative;
+  height: 44px;
+  border-radius: 8px;
+  background: linear-gradient(to right, #0052CC 0%, #36b37e 25%, #ffc400 50%, #ff991f 75%, #de350b 100%);
+  margin: 12px 0 6px;
+}
+.compliance-slider-labels { display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.35); position: absolute; top: 6px; left: 10px; right: 10px; }
+.compliance-slider-input { position: absolute; top: 0; left: 0; width: 100%; height: 44px; margin: 0; opacity: 0; cursor: pointer; }
+.compliance-slider-handle {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 34px;
+  background: #fff;
+  border: 2px solid var(--color-text, #172b4d);
+  border-radius: 3px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.compliance-scale-ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--color-text-muted,#8993a4); padding: 0 10px; margin-top: 2px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.btn-primary { background: var(--app-primary); color: #fff; }
+.btn-primary:hover { background: #0747a6; }
+.btn-secondary { background: var(--color-bg-secondary, #f4f5f7); color: var(--color-text, #172b4d); border: 1px solid var(--color-border, #dfe1e6); }
+.btn-secondary:hover { background: var(--color-surface-hover, rgba(0,0,0,0.04)); }
+.btn-danger { background: var(--app-error); color: #fff; }
+.btn-danger:hover { background: #bf2600; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-group { display: flex; gap: 8px; margin-top: 16px; }
+
+/* Tables */
+.risk-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.risk-table th { text-align: left; padding: 8px 12px; color: var(--color-text-muted, #8993a4); font-weight: 500; border-bottom: 1px solid var(--color-border, #dfe1e6); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.risk-table td { padding: 10px 12px; border-bottom: 1px solid var(--color-border-light, #ebecf0); }
+.risk-table tr:hover td { background: var(--color-surface-hover, rgba(0,0,0,0.02)); }
+.risk-table tr { cursor: pointer; }
+
+/* Stats Grid */
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat-card {
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border-light, #ebecf0);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+}
+.stat-value { font-size: 28px; font-weight: 700; font-family: var(--font-mono, 'SF Mono', Consolas, monospace); }
+.stat-label { font-size: 11px; color: var(--color-text-muted, #8993a4); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Tabs */
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--color-border-light, #ebecf0); margin-bottom: 20px; }
+.tab {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary, #44546f);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+.tab:hover { color: var(--color-text, #172b4d); }
+.tab.active { color: var(--app-primary); border-bottom-color: var(--app-primary); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Controls Section */
+.control-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 12px;
+  background: var(--color-bg-secondary, #f4f5f7);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border: 1px solid var(--color-border-light, #ebecf0);
+}
+.control-meta { font-size: 11px; color: var(--color-text-muted, #8993a4); }
+
+/* Acceptance Record */
+.acceptance-box {
+  border: 2px dashed var(--color-border, #dfe1e6);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--color-bg-secondary, #f4f5f7);
+}
+.acceptance-box.accepted {
+  border-color: var(--app-success);
+  border-style: solid;
+  background: var(--app-success-light);
+}
+
+/* Heatmap */
+.heatmap-container { height: 350px; }
+.bubble-container { height: 400px; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .form-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Empty state */
+.empty-state { text-align: center; padding: 60px 20px; }
+.empty-state i { font-size: 48px; color: var(--color-border, #dfe1e6); margin-bottom: 16px; }
+.empty-state h3 { font-size: 16px; color: var(--color-text-secondary, #44546f); margin-bottom: 8px; }
+.empty-state p { font-size: 13px; color: var(--color-text-muted, #8993a4); max-width: 400px; margin: 0 auto; }
+
+/* Score display */
+.score-display { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--color-bg-secondary, #f4f5f7); border-radius: 8px; margin-top: 16px; }
+.score-number { font-size: 32px; font-weight: 700; font-family: var(--font-mono, 'SF Mono', Consolas, monospace); }
+.score-meta { font-size: 12px; color: var(--color-text-secondary, #44546f); }
+
+/* Tooltip on hover for factor descriptions */
+.factor-btn { position: relative; }
+.factor-btn[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-text, #172b4d);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: normal;
+  width: max-content;
+  max-width: 250px;
+  z-index: 100;
+  line-height: 1.4;
+}
+
+/* 4T Response */
+.response-options { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.response-btn {
+  padding: 6px 14px;
+  border: 2px solid var(--color-border, #dfe1e6);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--color-surface, #fff);
+  transition: all 0.15s;
+}
+.response-btn:hover { border-color: var(--app-primary); }
+.response-btn.selected { border-color: var(--app-primary); background: var(--app-primary-light); color: var(--app-primary); }
+
+/* Inherent vs Residual toggle */
+.assessment-toggle {
+  display: flex;
+  background: var(--color-bg-secondary, #f4f5f7);
+  border-radius: 6px;
+  padding: 3px;
+  gap: 2px;
+}
+.toggle-btn {
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary, #44546f);
+  transition: all 0.15s;
+}
+.toggle-btn.active { background: var(--color-surface, #fff); color: var(--app-primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; top:0; left:0; right:0; bottom:0;
+  background: rgba(9,30,66,0.54);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.modal-box {
+  background: var(--color-surface, #fff);
+  border-radius: 8px;
+  width: 640px;
+  max-width: 92vw;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 24px rgba(9,30,66,0.25);
+}
+.modal-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--color-border-light,#ebecf0); }
+.modal-header h3 { font-size:15px; font-weight:600; }
+.modal-close { cursor:pointer; color: var(--color-text-muted,#8993a4); font-size:16px; background:none; border:none; }
+.modal-body { padding:16px 20px; overflow-y:auto; flex:1; }
+.modal-footer { display:flex; gap:8px; justify-content:flex-end; padding:12px 20px; border-top:1px solid var(--color-border-light,#ebecf0); }
+.narrative-textarea { width:100%; min-height:360px; font-family: var(--font-mono, monospace); font-size:12px; line-height:1.5; padding:12px; border:1px solid var(--color-border,#dfe1e6); border-radius:6px; resize:vertical; }
+.icon-btn { background:none; border:none; cursor:pointer; color: var(--color-text-secondary, #44546f); font-size:13px; padding:4px 6px; border-radius:4px; }
+.icon-btn:hover { background: var(--color-surface-hover, rgba(0,0,0,0.04)); color: var(--app-primary); }
+
+/* Toast (undo notifications) */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-text, #172b4d);
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  z-index: 2000;
+  animation: toast-in 0.2s ease-out;
+}
+@keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+.toast button { background: none; border: none; color: #fff; font-weight: 600; cursor: pointer; text-decoration: underline; font-size: 13px; }
+
+/* Print */
+@media print {
+  .sidebar { display: none; }
+  .main-content { padding: 0; }
+  .btn { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="app-container">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1><i class="fa-solid fa-shield-halved"></i> Risk Profiler</h1>
+      <p>Built by Compensation, Risk, Analytics, and Fairness Team</p>
+      <div style="margin-top:8px;padding:6px 10px;background:rgba(255,153,31,0.12);border-radius:4px;border-left:3px solid #ff991f;font-size:11px;color:#974F0C;line-height:1.4;">
+        <strong>V1.8 - Test Version</strong><br>
+        Your risks are stored in your browser only. Multi-user shared view is coming soon.
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">Views</div>
+      <div class="nav-item active" onclick="showView('dashboard')"><i class="fa-solid fa-chart-line"></i> Dashboard <span class="risk-count" id="totalRiskCount">0</span></div>
+      <div class="nav-item" onclick="showView('register')"><i class="fa-solid fa-list-check"></i> Risk Register</div>
+      <div class="nav-item" onclick="showView('heatmap')"><i class="fa-solid fa-grip"></i> Risk Heatmap</div>
+      <div class="nav-item" onclick="showView('bubble')"><i class="fa-solid fa-circle-nodes"></i> Risk Profile Chart</div>
+      <div class="nav-section">Actions</div>
+      <div class="nav-item" onclick="showView('assess')"><i class="fa-solid fa-plus-circle"></i> New Assessment</div>
+      <div class="nav-item" onclick="showView('controls')"><i class="fa-solid fa-shield"></i> Controls Library</div>
+      <div class="nav-item" onclick="showView('acceptance')"><i class="fa-solid fa-stamp"></i> Acceptance Records</div>
+      <div class="nav-item" onclick="showView('aggregate')"><i class="fa-solid fa-layer-group"></i> Aggregate Risks</div>
+      <div class="nav-section">Configuration</div>
+      <div class="nav-item" onclick="showView('settings')"><i class="fa-solid fa-sliders"></i> Risk Appetite</div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn btn-primary btn-sm" style="width:100%;" onclick="exportData()"><i class="fa-solid fa-download"></i> Export Register</button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content" id="mainContent">
+    <!-- Dashboard View -->
+    <div id="view-dashboard" class="view active">
+      <div class="page-header">
+        <h2>Risk Dashboard</h2>
+        <p>Overview of current risk profile across all assessed risks</p>
+      </div>
+      <div class="stats-grid" id="dashStats"></div>
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Risk Distribution</div><div class="card-subtitle">Risk Rating vs Compliance Mechanism Rating</div></div>
+        </div>
+        <div id="dashChart" style="height: 300px;"></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Top Risks</div><div class="card-subtitle">Highest scoring risks requiring attention</div></div>
+          <button class="btn btn-secondary btn-sm" onclick="showView('register')">View All</button>
+        </div>
+        <table class="risk-table" id="topRisksTable">
+          <thead><tr><th>Risk</th><th>Risk Rating</th><th>Compliance</th><th>Response</th><th>Owner</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Risk Register View -->
+    <div id="view-register" class="view" style="display:none;">
+      <div class="page-header" style="display:flex; justify-content:space-between; align-items:start;">
+        <div><h2>Risk Register</h2><p>Full inventory of assessed risks with controls and responses</p></div>
+        <button class="btn btn-primary" onclick="showView('assess')"><i class="fa-solid fa-plus"></i> New Risk</button>
+      </div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="form-grid three-col">
+          <div class="form-group">
+            <label class="form-label">Search</label>
+            <input class="form-input" id="registerSearch" placeholder="Search name, description, owner..." oninput="renderRegister()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Country</label>
+            <select class="form-select" id="registerFilterCountry" onchange="renderRegister()"><option value="">All Countries</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select class="form-select" id="registerFilterCategory" onchange="renderRegister()"><option value="">All Categories</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Risk Rating</label>
+            <select class="form-select" id="registerFilterRating" onchange="renderRegister()">
+              <option value="">All Ratings</option>
+              <option value="5">Very High</option>
+              <option value="4">High</option>
+              <option value="3">Medium</option>
+              <option value="2">Low</option>
+              <option value="1">Very Low</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="registerFilterStatus" onchange="renderRegister()">
+              <option value="open">Open Only</option>
+              <option value="all">Open + Closed</option>
+              <option value="closed">Closed Only</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sort By</label>
+            <select class="form-select" id="registerSort" onchange="renderRegister()">
+              <option value="default">Default (newest first)</option>
+              <option value="score-desc">Risk Score (High → Low)</option>
+              <option value="score-asc">Risk Score (Low → High)</option>
+              <option value="name">Risk Name (A → Z)</option>
+              <option value="country">Country (A → Z)</option>
+            </select>
+          </div>
+          <div class="form-group" style="align-self:end;">
+            <button class="btn btn-secondary btn-sm" onclick="clearRegisterFilters()"><i class="fa-solid fa-xmark"></i> Clear Filters</button>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <table class="risk-table" id="registerTable">
+          <thead><tr><th>ID</th><th>Risk Name</th><th>Category</th><th>Country</th><th>Risk Rating</th><th>Trend</th><th>Compliance Rating</th><th>Response</th><th>Score</th><th>Owner</th><th>Next Step</th><th>Last Reviewed</th><th>Status</th><th></th></tr></thead>
+          <tbody id="registerBody"></tbody>
+        </table>
+        <div id="registerEmpty" class="empty-state">
+          <i class="fa-solid fa-shield-halved"></i>
+          <h3>No risks assessed yet</h3>
+          <p>Start by creating a new risk assessment. Each risk will be scored across impact factors and likelihood.</p>
+          <button class="btn btn-primary" style="margin-top:16px;" onclick="showView('assess')"><i class="fa-solid fa-plus"></i> Assess First Risk</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Heatmap View -->
+    <div id="view-heatmap" class="view" style="display:none;">
+      <div class="page-header">
+        <h2>Risk Heatmap</h2>
+        <p>5×5 likelihood vs impact matrix (Figure 1 Risk Matrix)</p>
+      </div>
+      <div class="card">
+        <div id="heatmapChart" class="heatmap-container"></div>
+      </div>
+    </div>
+
+    <!-- Bubble Chart View -->
+    <div id="view-bubble" class="view" style="display:none;">
+      <div class="page-header">
+        <h2>Risk Profile Chart</h2>
+        <p>x: Compliance Mechanism rating · y: Risk Score Plot Value · bubble size: sum of impact values (Figure 10)</p>
+      </div>
+      <div class="card">
+        <div id="bubbleChart" class="bubble-container"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Key</div>
+        <div class="card-subtitle" style="margin-bottom:12px;">Bubbles are labelled with a short code. Match the code below to see the full risk name, or click a row to open that risk.</div>
+        <div id="bubbleChartKey"></div>
+      </div>
+    </div>
+
+    <!-- Assessment View -->
+    <div id="view-assess" class="view" style="display:none;">
+      <div class="page-header">
+        <h2 id="assessTitle">New Risk Assessment</h2>
+        <p>Rate impact and likelihood to derive the inherent Risk Score, then rate the Compliance Mechanism to reflect control maturity.</p>
+      </div>
+
+      <!-- Risk Details -->
+      <div class="card">
+        <div class="card-title">Risk Details</div>
+        <div class="card-subtitle" style="margin-bottom:12px;">Identify the risk and its context</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Risk Name *</label><input class="form-input" id="riskName" placeholder="e.g. EU PTD Non-Compliance (Poland)"></div>
+          <div class="form-group"><label class="form-label">Category</label>
+            <select class="form-select" id="riskCategory">
+              <option value="">Select...</option>
+              <option>Regulatory Compliance</option>
+              <option>Employment Law</option>
+              <option>Pay Equity / Compensation</option>
+              <option>Benefits</option>
+              <option>Data Privacy</option>
+              <option>Financial Reporting</option>
+              <option>Reputational</option>
+              <option>Operational</option>
+              <option>Strategic</option>
+              <option>People & Culture</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Risk Owner</label><input class="form-input" id="riskOwner" placeholder="e.g. Risk Owner Name"></div>
+          <div class="form-group"><label class="form-label">Assessment Date</label><input class="form-input" type="date" id="riskDate"></div>
+          <div class="form-group"><label class="form-label">Country</label>
+            <select class="form-select" id="riskCountry">
+              <option value="">Select...</option>
+              <option>Austria</option>
+              <option>Belgium</option>
+              <option>Bulgaria</option>
+              <option>Croatia</option>
+              <option>Cyprus</option>
+              <option>Czech Republic</option>
+              <option>Denmark</option>
+              <option>Estonia</option>
+              <option>Finland</option>
+              <option>France</option>
+              <option>Germany</option>
+              <option>Greece</option>
+              <option>Hungary</option>
+              <option>Ireland</option>
+              <option>Italy</option>
+              <option>Latvia</option>
+              <option>Lithuania</option>
+              <option>Luxembourg</option>
+              <option>Malta</option>
+              <option>Netherlands</option>
+              <option>Poland</option>
+              <option>Portugal</option>
+              <option>Romania</option>
+              <option>Slovakia</option>
+              <option>Slovenia</option>
+              <option>Spain</option>
+              <option>Sweden</option>
+              <option>United Kingdom</option>
+              <option>United States</option>
+              <option>Other / Multi-Country</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Legal Entity <span style="color:var(--color-text-muted,#8993a4);font-weight:400;">(optional)</span></label><input class="form-input" id="riskLegalEntity" placeholder="e.g. Amazon EU SARL"></div>
+          <div class="form-group"><label class="form-label">Legislation Reference <span style="color:var(--color-text-muted,#8993a4);font-weight:400;">(optional)</span></label><input class="form-input" id="riskLegislationRef" placeholder="e.g. EU Directive 2023/970, Art. 5"></div>
+          <div class="form-group"><label class="form-label">Legislation URL <span style="color:var(--color-text-muted,#8993a4);font-weight:400;">(optional)</span></label><input class="form-input" type="url" id="riskLegislationUrl" placeholder="https://eur-lex.europa.eu/..."></div>
+          <div class="form-group full-width"><label class="form-label">Risk Description</label><textarea class="form-textarea" id="riskDesc" placeholder="Describe the risk event, its causes (sources/hazards), and potential consequences..."></textarea></div>
+          <div class="form-group"><label class="form-label">Tag 1</label><input class="form-input" id="riskTag1" placeholder="e.g. EU PTD"></div>
+          <div class="form-group"><label class="form-label">Tag 2</label><input class="form-input" id="riskTag2" placeholder="e.g. Poland"></div>
+        </div>
+      </div>
+
+      <!-- Inherent Risk: Impact & Likelihood -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Inherent Risk: Impact &amp; Likelihood</div>
+            <div class="card-subtitle">Rate each factor from Very Low (1) to Very High (5). Risk Score = Σ(Impact × Likelihood × Weight) per factor.</div>
+          </div>
+        </div>
+
+        <div id="assessmentPanel">
+          <!-- Impact Factors -->
+          <div class="rating-grid" id="ratingGrid"></div>
+
+          <!-- Likelihood -->
+          <div class="rating-factor" style="margin-top:12px; background: var(--app-primary-light); border-color: var(--app-primary);">
+            <div>
+              <div class="factor-label"><i class="fa-solid fa-chart-simple"></i> Likelihood</div>
+              <div class="factor-desc">Probability of occurrence</div>
+            </div>
+            <div class="factor-options" id="likelihoodOptions"></div>
+          </div>
+
+          <!-- Score Display -->
+          <div class="score-display" id="scoreDisplay">
+            <div class="score-number" id="currentScore">0</div>
+            <div>
+              <div class="score-meta">Risk Score</div>
+              <div id="currentRating"><span class="badge badge-not-rated">NOT RATED</span></div>
+            </div>
+            <div style="margin-left:auto; text-align:right;">
+              <div class="score-meta">Risk Score Plot Value (0-5)</div>
+              <div id="scoreBreakdown" style="font-size:12px; color:var(--color-text-muted,#8993a4);">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compliance Mechanism -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title"><i class="fa-solid fa-scale-balanced"></i> Compliance Mechanism Rating</div>
+            <div class="card-subtitle">Reflects control maturity for this risk. Plots on the horizontal axis of the Risk Profile Chart.</div>
+          </div>
+          <div class="assessment-toggle">
+            <button class="toggle-btn active" onclick="switchComplianceMode('subjective', this)">Subjective</button>
+            <button class="toggle-btn" onclick="switchComplianceMode('datadriven', this)">Data Driven</button>
+          </div>
+        </div>
+
+        <div id="compliancePanel">
+          <!-- Subjective slider (Fig 9) -->
+          <div id="complianceSubjectivePanel">
+            <div class="factor-desc" style="margin-bottom:4px;">Move the slider to reflect your judgment of control maturity for this obligation.</div>
+            <div class="compliance-slider-track">
+              <div class="compliance-slider-labels">
+                <span>STRONG</span><span>SATISFACTORY</span><span>MARGINAL</span><span>NEEDS IMPROVEMENT</span><span>WEAK</span>
+              </div>
+              <input type="range" class="compliance-slider-input" id="complianceSlider" min="0" max="1800" step="1" value="700" oninput="onComplianceSliderInput(this.value)">
+              <div class="compliance-slider-handle" id="complianceSliderHandle" style="left:38.9%;"></div>
+            </div>
+            <div class="compliance-scale-ticks"><span>0.0000</span><span>0.0450</span><span>0.0900</span><span>0.1350</span><span>0.1800</span></div>
+          </div>
+
+          <!-- Data driven inputs (Appendix B) -->
+          <div id="complianceDataDrivenPanel" style="display:none;">
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Defect Rate (%)</label>
+                <input class="form-input" type="number" id="defectRateInput" min="0" max="100" step="0.01" placeholder="e.g. 11" oninput="onDefectRateInput(this.value)">
+                <span style="font-size:11px;color:var(--color-text-muted,#8993a4);">% of sample population representing a compliance defect or control failure</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Obligation Risk Rating</label>
+                <select class="form-select" id="defectRiskLevelInput" onchange="onDefectRateInput(document.getElementById('defectRateInput').value)">
+                  <option value="VH">Very High</option>
+                  <option value="H">High</option>
+                  <option value="M" selected>Medium</option>
+                  <option value="L">Low</option>
+                  <option value="VL">Very Low</option>
+                </select>
+                <span style="font-size:11px;color:var(--color-text-muted,#8993a4);">Defect tolerance varies by risk rating (Appendix B)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="score-display" id="complianceScoreDisplay">
+            <div class="score-number" id="complianceRangeScoreNum" style="font-size:24px;">1.0000</div>
+            <div>
+              <div class="score-meta">Range Score</div>
+              <div id="complianceRatingBadge"><span class="badge badge-not-rated">NOT RATED</span></div>
+            </div>
+            <div style="margin-left:auto; text-align:right;">
+              <div class="score-meta">Position in range</div>
+              <div id="complianceRangeDetail" style="font-size:12px; color:var(--color-text-muted,#8993a4);">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4T Risk Response (Hopkin) -->
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-route"></i> Risk Response (4Ts)</div>
+        <div class="card-subtitle" style="margin-bottom:12px;">Select the appropriate response strategy (Hopkin framework)</div>
+        <div class="response-options" id="responseOptions">
+          <div class="response-btn" onclick="selectResponse('Tolerate', this)" title="Accept the risk within appetite, monitor">
+            <i class="fa-solid fa-eye"></i> Tolerate
+          </div>
+          <div class="response-btn" onclick="selectResponse('Treat', this)" title="Reduce likelihood or impact through controls">
+            <i class="fa-solid fa-wrench"></i> Treat
+          </div>
+          <div class="response-btn" onclick="selectResponse('Transfer', this)" title="Transfer to third party (insurance, outsourcing)">
+            <i class="fa-solid fa-arrow-right-arrow-left"></i> Transfer
+          </div>
+          <div class="response-btn" onclick="selectResponse('Terminate', this)" title="Avoid the risk entirely by stopping the activity">
+            <i class="fa-solid fa-ban"></i> Terminate
+          </div>
+        </div>
+        <div class="form-group full-width" style="margin-top:12px;">
+          <label class="form-label">Response Rationale</label>
+          <textarea class="form-textarea" id="responseRationale" placeholder="Explain why this response strategy was chosen..."></textarea>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title"><i class="fa-solid fa-shield"></i> Recommended Controls</div><div class="card-subtitle">Document controls that reduce inherent risk to residual level</div></div>
+          <button class="btn btn-secondary btn-sm" onclick="addControl()"><i class="fa-solid fa-plus"></i> Add Control</button>
+        </div>
+        <div id="controlsList"></div>
+      </div>
+
+      <!-- Next Step -->
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-calendar-check"></i> Next Step</div>
+        <div class="card-subtitle" style="margin-bottom:12px;">Diarise the next action so it surfaces in the Risk Register and can be tracked to a due date</div>
+        <div class="form-grid">
+          <div class="form-group full-width"><label class="form-label">Next Step Description</label><input class="form-input" id="nextStepDesc" placeholder="e.g. Re-test defect rate following control remediation"></div>
+          <div class="form-group"><label class="form-label">Owner</label><input class="form-input" id="nextStepOwner" placeholder="Who is responsible"></div>
+          <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" type="date" id="nextStepDueDate"></div>
+        </div>
+      </div>
+
+      <!-- Risk Acceptance -->
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-stamp"></i> Risk Acceptance</div>
+        <div class="card-subtitle" style="margin-bottom:12px;">Record formal acceptance if risk is tolerated above appetite</div>
+        <div class="acceptance-box" id="acceptanceBox">
+          <div class="form-grid">
+            <div class="form-group"><label class="form-label">Accepted By</label><input class="form-input" id="acceptedBy" placeholder="Name and role of approver"></div>
+            <div class="form-group"><label class="form-label">Acceptance Date</label><input class="form-input" type="date" id="acceptanceDate"></div>
+            <div class="form-group"><label class="form-label">Review Date</label><input class="form-input" type="date" id="reviewDate" title="When must this acceptance be re-validated?"></div>
+            <div class="form-group"><label class="form-label">Escalation Level</label>
+              <select class="form-select" id="escalationLevel">
+                <option value="">Select...</option>
+                <option>Risk Owner</option>
+                <option>Director</option>
+                <option>VP</option>
+                <option>SVP</option>
+                <option>S-Team</option>
+              </select>
+            </div>
+            <div class="form-group full-width"><label class="form-label">Acceptance Conditions & Rationale</label><textarea class="form-textarea" id="acceptanceRationale" placeholder="Document why the risk is being accepted, any conditions, and triggers for re-evaluation..."></textarea></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Risk Status / Closure -->
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-flag-checkered"></i> Risk Status</div>
+        <div class="card-subtitle" style="margin-bottom:12px;">Close a risk once it has been remediated, transferred, or is no longer applicable. Closed risks are excluded from active dashboards but remain in the register for audit history.</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Status</label>
+            <select class="form-select" id="riskStatus" onchange="toggleClosureFields()">
+              <option value="open">Open</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Closure Reason</label>
+            <select class="form-select" id="closureReason">
+              <option value="">Select...</option>
+              <option>Remediated / Controls Implemented</option>
+              <option>Risk Accepted (see Risk Acceptance above)</option>
+              <option>Transferred</option>
+              <option>Activity Terminated / No Longer Applicable</option>
+              <option>Duplicate Entry</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Closed Date</label><input class="form-input" type="date" id="closedDate"></div>
+          <div class="form-group full-width"><label class="form-label">Closure Notes</label><textarea class="form-textarea" id="closureNotes" placeholder="Summarize why this risk is being closed and what evidence supports it..."></textarea></div>
+        </div>
+      </div>
+
+      <!-- Save -->
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="saveRisk()"><i class="fa-solid fa-check"></i> Save Assessment</button>
+        <button class="btn btn-secondary" onclick="exportNarrativeFromForm()"><i class="fa-solid fa-file-lines"></i> Export Narrative</button>
+        <button class="btn btn-secondary" onclick="clearForm()"><i class="fa-solid fa-eraser"></i> Clear</button>
+        <button class="btn btn-secondary" onclick="showView('register')"><i class="fa-solid fa-arrow-left"></i> Cancel</button>
+      </div>
+    </div>
+
+    <!-- Controls Library View -->
+    <div id="view-controls" class="view" style="display:none;">
+      <div class="page-header">
+        <h2>Controls Library</h2>
+        <p>All documented controls with effectiveness ratings</p>
+      </div>
+      <div class="card" id="controlsLibrary">
+        <div class="empty-state" id="controlsEmpty">
+          <i class="fa-solid fa-shield"></i>
+          <h3>No controls documented yet</h3>
+          <p>Controls are added when you assess risks. They'll appear here for reuse across assessments.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Acceptance Records View -->
+    <div id="view-acceptance" class="view" style="display:none;">
+      <div class="page-header">
+        <h2>Acceptance Records</h2>
+        <p>Formal risk acceptance decisions with approver and review dates</p>
+      </div>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <table class="risk-table" id="acceptanceTable">
+          <thead><tr><th>Risk</th><th>Accepted By</th><th>Date</th><th>Review Due</th><th>Escalation</th><th>Status</th></tr></thead>
+          <tbody id="acceptanceBody"></tbody>
+        </table>
+        <div id="acceptanceEmpty" class="empty-state">
+          <i class="fa-solid fa-stamp"></i>
+          <h3>No acceptance records</h3>
+          <p>When risks are formally accepted, they'll be tracked here with review dates and approvers.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aggregate Risks View -->
+    <div id="view-aggregate" class="view" style="display:none;">
+      <div class="page-header">
+        <h2>Aggregate Risks</h2>
+        <p>Combine multiple risks into an overall Risk Score and Compliance Mechanism rating using the power mean (RMS) methodology</p>
+      </div>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <table class="risk-table" id="aggregateSelectTable">
+          <thead><tr><th style="width:32px;"></th><th>Risk</th><th>Risk Rating</th><th>Compliance Rating</th></tr></thead>
+          <tbody id="aggregateSelectBody"></tbody>
+        </table>
+        <div id="aggregateSelectEmpty" class="empty-state" style="display:none;">
+          <i class="fa-solid fa-layer-group"></i>
+          <h3>No risks to aggregate</h3>
+          <p>Assess at least two risks to combine them into an aggregate view.</p>
+        </div>
+      </div>
+      <div class="card" id="aggregateResultCard" style="display:none;">
+        <div class="card-title">Aggregate Result</div>
+        <div class="card-subtitle" style="margin-bottom:12px;">Root Mean Square (RMS) of risk-weighted values: a Weak/High-risk rating dominates rather than being averaged out</div>
+        <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+          <div class="stat-card"><div class="stat-value" id="aggRiskScore">—</div><div class="stat-label">Aggregate Risk Score</div></div>
+          <div class="stat-card"><div id="aggRiskRating">—</div><div class="stat-label">Aggregate Risk Rating</div></div>
+          <div class="stat-card"><div class="stat-value" id="aggComplianceScore">—</div><div class="stat-label">Aggregate Compliance Score</div></div>
+          <div class="stat-card"><div id="aggComplianceRating">—</div><div class="stat-label">Aggregate Compliance Rating</div></div>
+        </div>
+        <table class="risk-table" style="margin-top:12px;">
+          <thead><tr><th>Risk</th><th>Risk Score</th><th>Group Risk Weight</th><th>Weighted Score</th><th>Range Score</th><th>Compliance Risk Weight</th><th>Weighted Range Score</th></tr></thead>
+          <tbody id="aggregateDetailBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Risk Appetite Settings -->
+    <div id="view-settings" class="view" style="display:none;">
+      <div class="page-header">
+        <h2>Risk Appetite Configuration</h2>
+        <p>Define organisational tolerance thresholds (per Hopkin Ch.8)</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Risk Appetite Thresholds</div>
+        <div class="card-subtitle" style="margin-bottom:16px;">Risk Scores above these thresholds require escalation and formal acceptance. Defaults align to the Multi-Risk Factor Ranges (Low/Medium/High ceilings).</div>
+        <div class="form-grid three-col">
+          <div class="form-group">
+            <label class="form-label">Tolerable Threshold (max score)</label>
+            <input class="form-input" type="number" id="appetiteTolerable" value="89" min="1" max="2413">
+            <span style="font-size:11px; color:var(--color-text-muted,#8993a4);">Below this = acceptable without escalation (top of Low range)</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Elevated Threshold</label>
+            <input class="form-input" type="number" id="appetiteElevated" value="272" min="1" max="2413">
+            <span style="font-size:11px; color:var(--color-text-muted,#8993a4);">Requires Director+ acceptance (top of Medium range)</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Intolerable Threshold</label>
+            <input class="form-input" type="number" id="appetiteIntolerable" value="811" min="1" max="2413">
+            <span style="font-size:11px; color:var(--color-text-muted,#8993a4);">Requires VP/SVP acceptance or termination (top of High range)</span>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary btn-sm" onclick="saveAppetite()"><i class="fa-solid fa-check"></i> Save Thresholds</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Impact Factor Weights</div>
+        <div class="card-subtitle" style="margin-bottom:16px;">Adjust relative importance of each factor (default: equal weighting)</div>
+        <div class="form-grid three-col" id="weightSettings"></div>
+        <div class="btn-group">
+          <button class="btn btn-primary btn-sm" onclick="saveWeights()"><i class="fa-solid fa-check"></i> Save Weights</button>
+          <button class="btn btn-secondary btn-sm" onclick="resetWeights()"><i class="fa-solid fa-rotate-left"></i> Reset to Equal</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Narrative Export Modal -->
+<div class="modal-overlay" id="narrativeModal" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-file-lines"></i> Risk Narrative Export</h3>
+      <button class="modal-close" onclick="closeNarrativeModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--color-text-muted,#8993a4);margin-bottom:8px;">Generated from the risk's current inputs. Edit freely before pasting into the MBR.</p>
+      <textarea class="narrative-textarea" id="narrativeText"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="downloadNarrative()"><i class="fa-solid fa-download"></i> Download .txt</button>
+      <button class="btn btn-primary" onclick="copyNarrative()"><i class="fa-solid fa-copy"></i> Copy to Clipboard</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA MODEL
+// ============================================================
+const IMPACT_FACTORS = [
+  { id: 'worker_exp', name: 'Worker Experience', desc: 'Population of employees/CWs impacted', levels: ['<1% global pop.', '1-5% global pop.', '5-15% global pop.', '15-25% global pop.', '>25% global pop.'] },
+  { id: 'business_obj', name: 'Business Objectives', desc: 'Impact to strategic goals/processes', levels: ['No measurable impact', 'Minimal impact', 'Moderate (<30d delay)', 'High (31-90d delay)', 'Significant (>90d delay)'] },
+  { id: 'media', name: 'Media Coverage', desc: 'Reputational exposure breadth', levels: ['Not newsworthy', 'Brief local coverage', 'Regional coverage', 'National coverage', 'International coverage'] },
+  { id: 'litigation', name: 'Private Litigation', desc: 'Legal cost exposure', levels: ['No legal cost', '<$500K', '$500K-$1M', '$1M-$5M', '>$5M'] },
+  { id: 'regulatory', name: 'Regulatory Enforcement', desc: 'Regulator interest & fines', levels: ['No interest', 'Mild interest, <$500K', 'Heightened, $500K-$1M', 'Strong focus, $1M-$5M', 'Intensive scrutiny, >$5M'] },
+  { id: 'financial', name: 'Financial Impact', desc: 'Remediation/redress costs', levels: ['<$50K', '$50K-$250K', '$250K-$1M', '$1M-$10M', '>$10M'] }
+];
+
+const LIKELIHOOD_LEVELS = [
+  { value: 1, label: 'Very Unlikely', desc: '<10% chance', numeric: 1.0 },
+  { value: 2, label: 'Unlikely', desc: '10-30%', numeric: 3.0 },
+  { value: 3, label: 'Possible', desc: '30-60%', numeric: 5.0 },
+  { value: 4, label: 'Likely', desc: '60-90%', numeric: 8.0 },
+  { value: 5, label: 'Very Likely', desc: '>90%', numeric: 11.0 }
+];
+
+// ============================================================
+// SCORING METHODOLOGY CONSTANTS
+// Sourced from "Risk Profiler Scoring Methodology" (Amazon Confidential)
+// ============================================================
+
+// Fig 2/3: Impact rating numeric values (index by level 1-5). Begins at 1,
+// then alternates ×3.6 / ×1.6 multipliers: 1, 3.6, 5.76, 20.736, 33.1776
+const IMPACT_VALUES = [0, 1, 3.6, 5.76, 20.736, 33.1776];
+
+// Fig 4: Likelihood rating numeric values (index by level 1-5)
+const LIKELIHOOD_VALUES = [0, 1.0, 3.0, 5.0, 8.0, 11.0];
+
+// Overall Risk Rating labels (Fig 7/8 terminology — distinct from the
+// per-factor "Impact" selection labels used inside IMPACT_FACTORS below)
+const RATING_LABELS = ['', 'Very Low', 'Low', 'Medium', 'High', 'Very High'];
+const RATING_CLASSES = ['', 'badge-very-low', 'badge-low', 'badge-moderate', 'badge-high', 'badge-very-high'];
+const RATING_CODES = ['VL', 'L', 'M', 'H', 'VH']; // index 0-4 (rrv), used for defect table lookups
+
+// Fig 8: Multi-Risk Factor Ranges — thresholds calibrated for 6 equally
+// weighted risk factors (the app's default). If factor weights are changed
+// from equal (1.0 each), these fixed thresholds are an approximation rather
+// than an exact re-derivation — see supporting methodology doc, "Adaptations".
+const RISK_RATING_RANGES = [
+  { rrv: 0, label: 'Very Low', min: 0, max: 24 },
+  { rrv: 1, label: 'Low', min: 25, max: 89 },
+  { rrv: 2, label: 'Medium', min: 90, max: 272 },
+  { rrv: 3, label: 'High', min: 273, max: 811 },
+  { rrv: 4, label: 'Very High', min: 812, max: 2413 }
+];
+
+// Fig 9 / Compliance Mechanism ratings (5-point scale)
+const COMPLIANCE_CODES = ['STR', 'SAT', 'MAR', 'NI', 'W'];
+const COMPLIANCE_LABELS = ['', 'Strong', 'Satisfactory', 'Marginal', 'Needs Improvement', 'Weak'];
+const COMPLIANCE_CLASSES = ['', 'badge-strong', 'badge-satisfactory', 'badge-marginal', 'badge-needs-improvement', 'badge-weak'];
+const COMPLIANCE_COLORS = ['', '#0052CC', '#36b37e', '#ffc400', '#ff991f', '#de350b'];
+
+// Appendix B: Defect Range Thresholds per Risk Rating level.
+// Each entry: [min, max] mapped to a Compliance Rating Value (CRV 1-5)
+const DEFECT_RANGES = {
+  VH: [ [0.0000,0.0100], [0.0101,0.0300], [0.0301,0.0500], [0.0501,0.0700], [0.0701,0.0900] ],
+  H:  [ [0.0000,0.0200], [0.0201,0.0500], [0.0501,0.0700], [0.0701,0.1000], [0.1001,0.1300] ],
+  M:  [ [0.0000,0.0350], [0.0351,0.0700], [0.0701,0.1000], [0.1001,0.1300], [0.1301,0.1800] ],
+  L:  [ [0.0000,0.0450], [0.0451,0.1000], [0.1001,0.1500], [0.1501,0.1800], [0.1801,0.2200] ],
+  VL: [ [0.0000,0.0500], [0.0501,0.1200], [0.1201,0.1800], [0.1801,0.2200], [0.2201,0.2600] ]
+};
+
+// Page 6: Risk weighting applied to individual Range Scores during
+// Compliance Mechanism aggregation, keyed by the risk rating of the obligation
+const COMPLIANCE_RISK_WEIGHTING = { VH: 1.10, H: 1.05, M: 1.00, L: 0.95, VL: 0.90 };
+
+// Page 3: Group Risk Weight applied to Risk Score/Impact Value during
+// Risk Score aggregation, keyed by the Compliance Mechanism rating of the risk
+const GROUP_RISK_WEIGHT = { STR: 1.0000, SAT: 1.0000, MAR: 1.0250, NI: 1.0500, W: 1.1000 };
+
+// Page 6: Aggregate Rating Thresholds (bottom of range = rating floor)
+const AGGREGATE_COMPLIANCE_THRESHOLDS = {
+  STR: { min: 1.0000, max: 2.0000 },
+  SAT: { min: 2.0001, max: 3.0000 },
+  MAR: { min: 3.0001, max: 4.0000 },
+  NI:  { min: 4.0001, max: 5.0000 },
+  W:   { min: 5.0001, max: 6.0000 }
+};
+
+// Escapes text for safe insertion into HTML content or double-quoted
+// attribute values. Applied to all user-entered fields before innerHTML use.
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Storage helper (localStorage may be blocked in sandboxed iframes)
+const _memStore = {};
+function storageGet(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch(e) { return _memStore[key] ? JSON.parse(_memStore[key]) : fallback; }
+}
+function storageSet(key, value) {
+  const json = JSON.stringify(value);
+  try { localStorage.setItem(key, json); } catch(e) { _memStore[key] = json; }
+}
+
+// One-time migration: earlier versions of this tool stored data under
+// 'peac_' and, briefly, 'craf_' prefixed keys. If no 'craft_' data exists yet
+// but legacy data does, carry it forward so existing users don't lose their register.
+['risks', 'appetite', 'weights'].forEach(key => {
+  const newKey = 'craft_' + key;
+  const legacyKeys = ['craf_' + key, 'peac_' + key];
+  try {
+    if (localStorage.getItem(newKey) === null) {
+      for (const oldKey of legacyKeys) {
+        if (localStorage.getItem(oldKey) !== null) {
+          localStorage.setItem(newKey, localStorage.getItem(oldKey));
+          break;
+        }
+      }
+    }
+  } catch (e) { /* localStorage unavailable; nothing to migrate */ }
+});
+
+// State
+let risks = storageGet('craft_risks', []);
+let appetite = storageGet('craft_appetite', {tolerable:89, elevated:272, intolerable:811});
+let weights = storageGet('craft_weights', {worker_exp:1, business_obj:1, media:1, litigation:1, regulatory:1, financial:1});
+let currentResponse = '';
+let currentControls = [];
+let editingRiskId = null;
+let currentComplianceMode = 'subjective'; // 'subjective' | 'datadriven'
+
+// ============================================================
+// SCORING ENGINE — Risk Score Formula (Fig 6): R = Σ(Mi × L × W)
+// ============================================================
+function calculateScore(ratings, likelihood) {
+  const L = LIKELIHOOD_VALUES[likelihood || 0];
+  let R = 0;
+  IMPACT_FACTORS.forEach(f => {
+    const level = ratings[f.id] || 0;
+    if (level === 0) return;
+    const Mi = IMPACT_VALUES[level];
+    const W = weights[f.id] || 1;
+    R += Mi * L * W;
+  });
+  return Math.round(R * 100) / 100;
+}
+
+// Sum of impact values only (no likelihood) — used for Risk Profile Chart
+// bubble sizing per "How a risk is plotted" section
+function calculateImpactSum(ratings) {
+  let sum = 0;
+  IMPACT_FACTORS.forEach(f => {
+    const level = ratings[f.id] || 0;
+    if (level > 0) sum += IMPACT_VALUES[level];
+  });
+  return Math.round(sum * 1000) / 1000;
+}
+
+function getImpactRating(ratings) {
+  const values = IMPACT_FACTORS.map(f => ratings[f.id] || 0).filter(v => v > 0);
+  if (values.length === 0) return 0;
+  const avg = values.reduce((a, b) => a + b, 0) / values.length;
+  return Math.round(avg);
+}
+
+// Fig 8: maps a Risk Score to its Risk Rating bucket (returns rrv+1, 1-5)
+function getRiskRatingBucket(score) {
+  for (const b of RISK_RATING_RANGES) {
+    if (score >= b.min && score <= b.max) return b;
+  }
+  return score > RISK_RATING_RANGES[4].max ? RISK_RATING_RANGES[4] : RISK_RATING_RANGES[0];
+}
+function getRatingFromScore(score) {
+  if (!score || score <= 0) return 0;
+  return getRiskRatingBucket(score).rrv + 1;
+}
+
+// Fig 11: Risk Score Plot Value = RRV + Range% (0.00 - 5.00 scale, used as
+// the Risk Profile Chart's vertical axis position)
+function getRiskScorePlotValue(score) {
+  if (!score || score <= 0) return 0;
+  const b = getRiskRatingBucket(score);
+  const rangeDiff = b.max - b.min;
+  const rangeValue = Math.min(Math.max(score - b.min, 0), rangeDiff);
+  const rangePct = rangeDiff > 0 ? rangeValue / rangeDiff : 0;
+  return Math.min(5, b.rrv + rangePct);
+}
+
+function getRatingBadge(rating) {
+  if (!rating || rating === 0) return '<span class="badge badge-not-rated">Not Rated</span>';
+  return `<span class="badge ${RATING_CLASSES[rating]}">${RATING_LABELS[rating]}</span>`;
+}
+
+// ============================================================
+// COMPLIANCE MECHANISM SCORING (Individual Scoring Methodology)
+// ============================================================
+// Computes a Range Score (1.0000-6.0000 scale) for a defect rate against a
+// given obligation risk level code (VH/H/M/L/VL). Mirrors the worked example
+// on p.5: 11% defect on a Medium risk => CRV 4 + 0.3311 = 4.3311 (Needs Improvement)
+function computeRangeScore(defectRate, riskCode) {
+  const ranges = DEFECT_RANGES[riskCode] || DEFECT_RANGES.M;
+  const maxRange = ranges[ranges.length - 1];
+  // Principle: defect rates exceeding the max range for Weak are capped at the range max
+  const rate = Math.min(Math.max(defectRate, 0), maxRange[1]);
+  let idx = ranges.findIndex(r => rate >= r[0] && rate <= r[1]);
+  if (idx === -1) idx = ranges.length - 1;
+  const [min, max] = ranges[idx];
+  const diff = max - min;
+  const pct = diff > 0 ? (rate - min) / diff : 0;
+  const crv = idx + 1;
+  return { rangeScore: crv + pct, crv, code: COMPLIANCE_CODES[idx], rangePct: pct, rangeMin: min, rangeMax: max, diff };
+}
+
+// Subjective slider (Fig 9): reuses the Medium risk defect thresholds as the
+// generic 0.0000-0.1800 band scale referenced in the figure, converted through
+// the same Range Score pipeline so subjective and data-driven ratings plot on
+// an identical scale (per the "must be plotted on the same scale" principle).
+function computeSubjectiveRangeScore(sliderValue) {
+  return computeRangeScore(sliderValue, 'M');
+}
+
+function complianceLabelFromCode(code) {
+  const idx = COMPLIANCE_CODES.indexOf(code);
+  return idx === -1 ? 'Not Rated' : COMPLIANCE_LABELS[idx + 1];
+}
+function getComplianceBadge(code) {
+  const idx = COMPLIANCE_CODES.indexOf(code);
+  if (idx === -1) return '<span class="badge badge-not-rated">Not Rated</span>';
+  return `<span class="badge ${COMPLIANCE_CLASSES[idx + 1]}">${COMPLIANCE_LABELS[idx + 1]}</span>`;
+}
+
+// ============================================================
+// AGGREGATION (RMS / power mean)
+// ============================================================
+function rms(values) {
+  if (!values.length) return 0;
+  const sumSq = values.reduce((a, v) => a + v * v, 0);
+  return Math.sqrt(sumSq / values.length);
+}
+
+// Page 6: Aggregate Compliance Mechanism rating across multiple risks, each
+// risk-weighted by its own Risk Rating (COMPLIANCE_RISK_WEIGHTING)
+function aggregateComplianceRating(selectedRisks) {
+  const rows = selectedRisks.map(r => {
+    const riskCode = RATING_CODES[getRatingFromScore(r.riskScore) - 1] || 'M';
+    const weight = COMPLIANCE_RISK_WEIGHTING[riskCode] || 1.0;
+    const rangeScore = r.complianceRangeScore || 1.0;
+    return { name: r.name, riskCode, rangeScore, weight, weighted: rangeScore * weight };
+  });
+  let aggregate = rms(rows.map(r => r.weighted));
+  // Rating floor: an aggregate landing exactly on a tier boundary due to a
+  // sub-1.0 weight is bumped to the next tier's floor value (p.6 example)
+  const hasSubUnityWeight = rows.some(r => r.weight < 1);
+  [1,2,3,4,5].forEach(n => {
+    if (hasSubUnityWeight && Math.abs(aggregate - n) < 0.0001 && n < 6) {
+      const nextTierCode = COMPLIANCE_CODES[n]; // n=1 -> SAT(idx1), etc.
+      if (nextTierCode) aggregate = AGGREGATE_COMPLIANCE_THRESHOLDS[nextTierCode].min;
+    }
+  });
+  let code = 'STR';
+  for (const c of COMPLIANCE_CODES) {
+    const t = AGGREGATE_COMPLIANCE_THRESHOLDS[c];
+    if (aggregate >= t.min && aggregate <= t.max) { code = c; break; }
+  }
+  return { rows, aggregate: Math.round(aggregate * 1e6) / 1e6, code };
+}
+
+// Page 3: Aggregate Risk Score & Impact Value across multiple risks, each
+// weighted by the Group Risk Weight of its own Compliance Mechanism rating
+function aggregateRiskScore(selectedRisks) {
+  const rows = selectedRisks.map(r => {
+    const complianceCode = r.complianceCode || 'MAR';
+    const groupWeight = GROUP_RISK_WEIGHT[complianceCode] || 1.0;
+    return {
+      name: r.name,
+      complianceCode,
+      groupWeight,
+      weightedScore: (r.riskScore || 0) * groupWeight,
+      weightedImpact: (r.impactSum || 0) * groupWeight
+    };
+  });
+  const aggregateScore = rms(rows.map(r => r.weightedScore));
+  const aggregateImpact = rms(rows.map(r => r.weightedImpact));
+  return {
+    rows,
+    aggregateScore: Math.round(aggregateScore * 100) / 100,
+    aggregateImpact: Math.round(aggregateImpact * 1000) / 1000,
+    aggregateRating: getRatingFromScore(aggregateScore),
+    aggregatePlotValue: getRiskScorePlotValue(aggregateScore)
+  };
+}
+
+// ============================================================
+// UI RENDERING
+// ============================================================
+function showView(viewName) {
+  document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+  document.getElementById('view-' + viewName).style.display = 'block';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navItems = document.querySelectorAll('.nav-item');
+  const navMap = { dashboard: 0, register: 1, heatmap: 2, bubble: 3, assess: 4, controls: 5, acceptance: 6, aggregate: 7, settings: 8 };
+  if (navMap[viewName] !== undefined) navItems[navMap[viewName]]?.classList.add('active');
+
+  if (viewName === 'dashboard') renderDashboard();
+  if (viewName === 'register') renderRegister();
+  if (viewName === 'heatmap') renderHeatmap();
+  if (viewName === 'bubble') renderBubbleChart();
+  if (viewName === 'assess') initAssessmentForm();
+  if (viewName === 'controls') renderControlsLibrary();
+  if (viewName === 'acceptance') renderAcceptanceRecords();
+  if (viewName === 'aggregate') renderAggregatePanel();
+  if (viewName === 'settings') renderSettings();
+}
+
+function renderDashboard() {
+  const openRisks = risks.filter(r => !isRiskClosed(r));
+  const closedCount = risks.length - openRisks.length;
+  const total = openRisks.length;
+  const highRisks = openRisks.filter(r => getRatingFromScore(r.riskScore) >= 4).length;
+  const acceptedCount = openRisks.filter(r => r.acceptedBy).length;
+  const overdueReviews = openRisks.filter(r => r.reviewDate && new Date(r.reviewDate) < new Date()).length;
+  const staleRisks = openRisks.filter(r => daysSince(r.lastReviewedDate) > STALENESS_DAYS).length;
+  const trendingUp = openRisks.filter(r => {
+    const h = r.history || [];
+    return h.length >= 2 && h[h.length-1].riskScore > h[h.length-2].riskScore;
+  }).length;
+
+  document.getElementById('dashStats').innerHTML = `
+    <div class="stat-card"><div class="stat-value">${total}</div><div class="stat-label">Open Risks</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--app-error)">${highRisks}</div><div class="stat-label">High/Very High</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--app-success)">${acceptedCount}</div><div class="stat-label">Formally Accepted</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:${overdueReviews > 0 ? 'var(--app-warning)' : 'var(--app-success)'}">${overdueReviews}</div><div class="stat-label">Reviews Overdue</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:${trendingUp > 0 ? 'var(--app-error)' : 'var(--app-success)'}">${trendingUp}</div><div class="stat-label">Trending Up</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:${staleRisks > 0 ? 'var(--app-warning)' : 'var(--app-success)'}">${staleRisks}</div><div class="stat-label">Stale (&gt;${STALENESS_DAYS}d)</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--color-text-muted,#8993a4)">${closedCount}</div><div class="stat-label">Closed</div></div>
+  `;
+  document.getElementById('totalRiskCount').textContent = total;
+
+  // Distribution chart: Risk Rating vs Compliance Rating (open risks only)
+  if (total > 0) {
+   if (typeof Highcharts !== 'undefined' && document.getElementById('dashChart')) {
+    const riskDist = [0,0,0,0,0];
+    const complianceDist = [0,0,0,0,0];
+    openRisks.forEach(r => {
+      const rr = getRatingFromScore(r.riskScore);
+      if (rr > 0) riskDist[rr-1]++;
+      const cIdx = COMPLIANCE_CODES.indexOf(r.complianceCode);
+      if (cIdx > -1) complianceDist[cIdx]++;
+    });
+
+    const s = getComputedStyle(document.documentElement);
+    const get = v => s.getPropertyValue(v).trim();
+    Highcharts.chart('dashChart', {
+      chart: { type: 'column', backgroundColor: 'transparent', style: { fontFamily: get('--font-sans') || '-apple-system, sans-serif' } },
+      title: { text: null },
+      xAxis: [
+        { categories: RATING_LABELS.slice(1), labels: { style: { color: get('--color-text-secondary') || '#44546f' } } }
+      ],
+      yAxis: { title: { text: 'Count' }, allowDecimals: false, gridLineColor: get('--color-border-light') || '#ebecf0' },
+      series: [
+        { name: 'Risk Rating', data: riskDist, color: '#ff5630' },
+        { name: 'Compliance Rating (STR→W)', data: complianceDist, color: '#36b37e' }
+      ],
+      legend: { itemStyle: { color: get('--color-text-secondary') || '#44546f' } },
+      credits: { enabled: false }
+    });
+   }
+  }
+
+  // Top risks (open only)
+  const sorted = [...openRisks].sort((a, b) => (b.riskScore || 0) - (a.riskScore || 0)).slice(0, 5);
+  const tbody = document.querySelector('#topRisksTable tbody');
+  tbody.innerHTML = sorted.length === 0
+    ? '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--color-text-muted,#8993a4);">No risks assessed yet</td></tr>'
+    : sorted.map(r => `<tr onclick="editRisk('${r.id}')">
+      <td><strong>${escapeHtml(r.name)}</strong></td>
+      <td>${getRatingBadge(getRatingFromScore(r.riskScore))}</td>
+      <td>${getComplianceBadge(r.complianceCode)}</td>
+      <td>${escapeHtml(r.response) || '—'}</td>
+      <td>${escapeHtml(r.owner) || '—'}</td>
+    </tr>`).join('');
+}
+
+// Compares the two most recent history snapshots to render a trend arrow.
+// Direction reflects Risk Score movement (up = worse, down = improved).
+function getTrendHtml(risk) {
+  const hist = risk.history || [];
+  if (hist.length < 2) return '<span class="trend-arrow trend-flat">—</span>';
+  const prev = hist[hist.length - 2].riskScore || 0;
+  const curr = hist[hist.length - 1].riskScore || 0;
+  if (curr > prev) return `<span class="trend-arrow trend-up" title="Risk Score increased from ${prev} to ${curr}"><i class="fa-solid fa-arrow-trend-up"></i></span>`;
+  if (curr < prev) return `<span class="trend-arrow trend-down" title="Risk Score decreased from ${prev} to ${curr}"><i class="fa-solid fa-arrow-trend-down"></i></span>`;
+  return '<span class="trend-arrow trend-flat" title="No change"><i class="fa-solid fa-minus"></i></span>';
+}
+
+const STALENESS_DAYS = 90; // ISO 31000 / COSO guidance: risks untouched >90 days are flagged as "register rot"
+function daysSince(isoDate) {
+  if (!isoDate) return Infinity;
+  return Math.floor((Date.now() - new Date(isoDate).getTime()) / (1000 * 60 * 60 * 24));
+}
+
+// Populates the Country/Category filter dropdowns from whatever values
+// actually exist in the register, preserving the current selection
+function populateRegisterFilterOptions() {
+  const countrySel = document.getElementById('registerFilterCountry');
+  const categorySel = document.getElementById('registerFilterCategory');
+  if (!countrySel || !categorySel) return;
+
+  const countries = [...new Set(risks.map(r => r.country).filter(Boolean))].sort();
+  const categories = [...new Set(risks.map(r => r.category).filter(Boolean))].sort();
+
+  const rebuild = (sel, values, allLabel) => {
+    const current = sel.value;
+    sel.innerHTML = `<option value="">${allLabel}</option>` + values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+    if (values.includes(current)) sel.value = current;
+  };
+  rebuild(countrySel, countries, 'All Countries');
+  rebuild(categorySel, categories, 'All Categories');
+}
+
+function clearRegisterFilters() {
+  document.getElementById('registerSearch').value = '';
+  document.getElementById('registerFilterCountry').value = '';
+  document.getElementById('registerFilterCategory').value = '';
+  document.getElementById('registerFilterRating').value = '';
+  document.getElementById('registerFilterStatus').value = 'open';
+  document.getElementById('registerSort').value = 'default';
+  renderRegister();
+}
+
+function isRiskClosed(r) { return r.status === 'closed'; }
+
+function getFilteredSortedRisks() {
+  const searchEl = document.getElementById('registerSearch');
+  const countryEl = document.getElementById('registerFilterCountry');
+  const categoryEl = document.getElementById('registerFilterCategory');
+  const ratingEl = document.getElementById('registerFilterRating');
+  const statusEl = document.getElementById('registerFilterStatus');
+  const sortEl = document.getElementById('registerSort');
+
+  const search = (searchEl?.value || '').trim().toLowerCase();
+  const countryFilter = countryEl?.value || '';
+  const categoryFilter = categoryEl?.value || '';
+  const ratingFilter = ratingEl?.value || '';
+  const statusFilter = statusEl?.value || 'open';
+  const sortMode = sortEl?.value || 'default';
+
+  let filtered = risks.filter(r => {
+    if (statusFilter === 'open' && isRiskClosed(r)) return false;
+    if (statusFilter === 'closed' && !isRiskClosed(r)) return false;
+    if (countryFilter && r.country !== countryFilter) return false;
+    if (categoryFilter && r.category !== categoryFilter) return false;
+    if (ratingFilter && getRatingFromScore(r.riskScore) !== parseInt(ratingFilter, 10)) return false;
+    if (search) {
+      const haystack = [r.name, r.description, r.owner, r.legalEntity, r.legislationRef, r.tag1, r.tag2].filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+    return true;
+  });
+
+  if (sortMode === 'score-desc') filtered = [...filtered].sort((a, b) => (b.riskScore || 0) - (a.riskScore || 0));
+  else if (sortMode === 'score-asc') filtered = [...filtered].sort((a, b) => (a.riskScore || 0) - (b.riskScore || 0));
+  else if (sortMode === 'name') filtered = [...filtered].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  else if (sortMode === 'country') filtered = [...filtered].sort((a, b) => (a.country || '').localeCompare(b.country || ''));
+
+  return filtered;
+}
+
+function renderRegister() {
+  const body = document.getElementById('registerBody');
+  const empty = document.getElementById('registerEmpty');
+  populateRegisterFilterOptions();
+
+  if (risks.length === 0) {
+    body.innerHTML = '';
+    empty.style.display = 'block';
+    empty.querySelector('h3').textContent = 'No risks assessed yet';
+    empty.querySelector('p').textContent = 'Start by creating a new risk assessment. Each risk will be scored across impact factors and likelihood.';
+    return;
+  }
+
+  const filteredRisks = getFilteredSortedRisks();
+  if (filteredRisks.length === 0) {
+    body.innerHTML = '';
+    empty.style.display = 'block';
+    empty.querySelector('h3').textContent = 'No risks match your filters';
+    empty.querySelector('p').textContent = 'Try clearing the search or filters above.';
+    return;
+  }
+  empty.style.display = 'none';
+  const today = new Date();
+  body.innerHTML = filteredRisks.map((r, i) => {
+    const nextStepOverdue = r.nextStepDueDate && new Date(r.nextStepDueDate) < today;
+    const staleDays = daysSince(r.lastReviewedDate);
+    const isStale = staleDays > STALENESS_DAYS;
+    const stableIdx = risks.findIndex(orig => orig.id === r.id);
+    const closed = isRiskClosed(r);
+    return `<tr class="${closed ? 'risk-row-closed' : ''}">
+    <td style="font-family:var(--font-mono,monospace);font-size:11px;" onclick="editRisk('${r.id}')">R-${String(stableIdx+1).padStart(3,'0')}</td>
+    <td onclick="editRisk('${r.id}')"><strong>${escapeHtml(r.name)}</strong><br><span style="font-size:11px;color:var(--color-text-muted,#8993a4);">${r.description ? escapeHtml(r.description.substring(0,60)) + '...' : ''}</span>${r.legislationRef ? `<br><span style="font-size:11px;color:var(--app-primary);"><i class="fa-solid fa-gavel" style="font-size:9px;"></i> ${escapeHtml(r.legislationRef)}${r.legislationUrl && /^https?:\/\//i.test(r.legislationUrl.trim()) ? ` <a href="${escapeHtml(r.legislationUrl.trim())}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" title="Open legislation source"><i class="fa-solid fa-arrow-up-right-from-square" style="font-size:8px;"></i></a>` : ''}</span>` : ''}</td>
+    <td onclick="editRisk('${r.id}')">${escapeHtml(r.category) || '—'}</td>
+    <td onclick="editRisk('${r.id}')">${escapeHtml(r.country) || '—'}${r.legalEntity ? `<br><span style="font-size:11px;color:var(--color-text-muted,#8993a4);">${escapeHtml(r.legalEntity)}</span>` : ''}</td>
+    <td onclick="editRisk('${r.id}')">${getRatingBadge(getRatingFromScore(r.riskScore))}</td>
+    <td onclick="editRisk('${r.id}')" style="text-align:center;">${getTrendHtml(r)}</td>
+    <td onclick="editRisk('${r.id}')">${getComplianceBadge(r.complianceCode)}</td>
+    <td onclick="editRisk('${r.id}')">${escapeHtml(r.response) || '—'}</td>
+    <td onclick="editRisk('${r.id}')" style="font-family:var(--font-mono,monospace);font-weight:600;">${r.riskScore}</td>
+    <td onclick="editRisk('${r.id}')">${escapeHtml(r.owner) || '—'}</td>
+    <td onclick="editRisk('${r.id}')">${r.nextStepDesc ? `${escapeHtml(r.nextStepDesc)}<br><span style="font-size:11px;${nextStepOverdue ? 'color:var(--app-error);font-weight:600;' : 'color:var(--color-text-muted,#8993a4);'}">${r.nextStepOwner ? escapeHtml(r.nextStepOwner) + ' · ' : ''}${escapeHtml(r.nextStepDueDate) || 'No due date'}${nextStepOverdue ? ' ⚠️' : ''}</span>` : '—'}</td>
+    <td onclick="editRisk('${r.id}')">${isStale ? `<span class="badge badge-stale" title="${staleDays} days since last review">Stale (${staleDays}d)</span>` : (r.lastReviewedDate ? fmtDate(r.lastReviewedDate.split('T')[0]) : '—')}</td>
+    <td onclick="editRisk('${r.id}')">${closed ? '<span class="badge badge-closed">Closed</span>' : (r.acceptedBy ? '<span class="badge badge-very-low">Accepted</span>' : '<span class="badge badge-not-rated">Open</span>')}</td>
+    <td>
+      <button class="icon-btn" title="Export Narrative" onclick="event.stopPropagation(); exportNarrative('${r.id}')"><i class="fa-solid fa-file-lines"></i></button>
+      ${closed
+        ? `<button class="icon-btn" title="Reopen Risk" onclick="event.stopPropagation(); reopenRisk('${r.id}')"><i class="fa-solid fa-rotate-left"></i></button>`
+        : `<button class="icon-btn" title="Close Risk" onclick="event.stopPropagation(); quickCloseRisk('${r.id}')"><i class="fa-solid fa-flag-checkered"></i></button>`
+      }
+      <button class="icon-btn" title="Delete Risk" style="color:var(--app-error);" onclick="event.stopPropagation(); deleteRisk('${r.id}')"><i class="fa-solid fa-trash"></i></button>
+    </td>
+  </tr>`;
+  }).join('');
+}
+
+function renderHeatmap() {
+  if (typeof Highcharts === 'undefined' || !document.getElementById('heatmapChart')) return;
+
+  const data = [];
+  // Count risks at each L×I intersection (Figure 1 Risk Matrix). Closed risks
+  // are excluded since the heatmap reflects currently active exposure.
+  const matrix = Array(5).fill(null).map(() => Array(5).fill(null).map(() => []));
+  risks.filter(r => !isRiskClosed(r)).forEach(r => {
+    const impact = getImpactRating(r.inherentRatings || {});
+    const likelihood = r.inherentLikelihood || 0;
+    if (impact > 0 && likelihood > 0) {
+      matrix[likelihood-1][impact-1].push(r.name);
+    }
+  });
+
+  for (let l = 0; l < 5; l++) {
+    for (let i = 0; i < 5; i++) {
+      const score = (l+1) * (i+1); // Simple L×I for heatmap coloring
+      data.push([i, l, score, matrix[l][i].length, matrix[l][i]]);
+    }
+  }
+
+  const s = getComputedStyle(document.documentElement);
+  const get = v => s.getPropertyValue(v).trim();
+
+  Highcharts.chart('heatmapChart', {
+    chart: { type: 'heatmap', backgroundColor: 'transparent', style: { fontFamily: get('--font-sans') || '-apple-system, sans-serif' } },
+    title: { text: null },
+    xAxis: { categories: ['Very Low', 'Low', 'Moderate', 'High', 'Very High'], title: { text: 'Impact', style: { color: get('--color-text-secondary') || '#44546f' } } },
+    yAxis: { categories: ['Very Unlikely', 'Unlikely', 'Possible', 'Likely', 'Very Likely'], title: { text: 'Likelihood', style: { color: get('--color-text-secondary') || '#44546f' } }, reversed: false },
+    colorAxis: { min: 1, max: 25, stops: [[0, '#36b37e'], [0.3, '#ffab00'], [0.6, '#ff5630'], [1, '#8b0000']] },
+    tooltip: {
+      formatter: function() {
+        const risks = this.point.options.value2 || [];
+        let html = `<b>Impact:</b> ${this.series.xAxis.categories[this.point.x]}<br><b>Likelihood:</b> ${this.series.yAxis.categories[this.point.y]}<br><b>Score:</b> ${this.point.value}<br><b>Risks:</b> ${this.point.options.value1 || 0}`;
+        if (risks.length > 0) html += '<br>' + risks.map(n => '• ' + n).join('<br>');
+        return html;
+      }
+    },
+    series: [{
+      data: data.map(d => ({ x: d[0], y: d[1], value: d[2], value1: d[3], value2: d[4] })),
+      borderWidth: 2,
+      borderColor: get('--color-surface') || '#fff',
+      dataLabels: {
+        enabled: true,
+        formatter: function() { return this.point.options.value1 > 0 ? `●${this.point.options.value1}` : ''; },
+        style: { color: '#fff', fontWeight: 'bold', textOutline: '1px #333' }
+      }
+    }],
+    legend: { enabled: true },
+    credits: { enabled: false }
+  });
+}
+
+function renderBubbleChart() {
+  if (typeof Highcharts === 'undefined' || !document.getElementById('bubbleChart')) return;
+
+  // Figure 10/11: x = Compliance Mechanism scroll bar value (0.0010-0.1800),
+  // y = Risk Score Plot Value (0.00-5.00), z = sum of impact values (bubble size)
+  // Closed risks are excluded since the chart reflects currently active exposure.
+  const bubbleData = risks.filter(r => !isRiskClosed(r)).map((r, i) => {
+    const impact = getImpactRating(r.inherentRatings || {});
+    const likelihood = r.inherentLikelihood || 0;
+    if (impact === 0 || likelihood === 0 || !r.riskScore) return null;
+    const x = r.complianceSliderValue != null ? r.complianceSliderValue : 0.09;
+    const y = getRiskScorePlotValue(r.riskScore);
+    const z = Math.max(r.impactSum || calculateImpactSum(r.inherentRatings || {}), 1);
+    const code = 'R' + String(i + 1).padStart(2, '0');
+    return { x, y, z, name: r.name, id: r.id, code, response: r.response, complianceCode: r.complianceCode };
+  }).filter(Boolean);
+
+  // Render the key/legend table mapping each bubble's short code to its full name
+  const keyEl = document.getElementById('bubbleChartKey');
+  if (keyEl) {
+    if (bubbleData.length === 0) {
+      keyEl.innerHTML = '<p style="font-size:12px;color:var(--color-text-muted,#8993a4);padding:8px;">No risks to plot yet.</p>';
+    } else {
+      keyEl.innerHTML = `<table class="risk-table"><thead><tr><th style="width:60px;">Code</th><th>Risk Name</th><th>Risk Rating</th><th>Compliance</th></tr></thead><tbody>
+        ${bubbleData.map(d => `<tr onclick="editRisk('${d.id}')"><td style="font-family:var(--font-mono,monospace);font-weight:700;color:var(--app-primary);">${d.code}</td><td>${escapeHtml(d.name)}</td><td>${getRatingBadge(getRatingFromScore(risks.find(r=>r.id===d.id)?.riskScore))}</td><td>${getComplianceBadge(d.complianceCode)}</td></tr>`).join('')}
+      </tbody></table>`;
+    }
+  }
+
+  const s = getComputedStyle(document.documentElement);
+  const get = v => s.getPropertyValue(v).trim();
+
+  Highcharts.chart('bubbleChart', {
+    chart: { type: 'bubble', backgroundColor: 'transparent', style: { fontFamily: get('--font-sans') || '-apple-system, sans-serif' }, zoomType: 'xy' },
+    title: { text: null },
+    xAxis: {
+      min: 0, max: 0.18, title: { text: 'Compliance Mechanism' },
+      plotLines: [0.036,0.072,0.108,0.144].map(v => ({ value: v, color: get('--color-border') || '#dfe1e6', width: 1 })),
+      labels: { formatter: function() {
+        const map = { 0: 'Strong', 0.045: 'Satisfactory', 0.09: 'Marginal', 0.135: 'Needs Improvement', 0.18: 'Weak' };
+        return map[this.value] !== undefined ? map[this.value] : this.value.toFixed(3);
+      } },
+      tickPositions: [0, 0.045, 0.09, 0.135, 0.18],
+      gridLineWidth: 1, gridLineColor: get('--color-border-light') || '#ebecf0'
+    },
+    yAxis: {
+      min: 0, max: 5, title: { text: 'Inherent Risk (Risk Score Plot Value)' },
+      tickPositions: [0,1,2,3,4,5],
+      labels: { formatter: function() {
+        const map = { 0: 'Very Low', 1: 'Low', 2: 'Medium', 3: 'High', 4: 'Very High', 5: '' };
+        return map[this.value] !== undefined ? map[this.value] : this.value;
+      } },
+      gridLineColor: get('--color-border-light') || '#ebecf0'
+    },
+    tooltip: { formatter: function() { return `<b>${this.point.code}: ${this.point.name}</b><br>Risk Score Plot Value: ${this.y.toFixed(2)}<br>Compliance: ${complianceLabelFromCode(this.point.complianceCode)}<br>Impact Sum (size): ${this.point.z}<br>Response: ${this.point.response || 'TBD'}`; } },
+    plotOptions: { bubble: {
+      minSize: 24, maxSize: 70,
+      dataLabels: {
+        enabled: true, format: '{point.code}',
+        style: { fontSize: '11px', fontWeight: '700', color: '#ffffff', textOutline: '1.5px rgba(0,0,0,0.65)' }
+      }
+    } },
+    series: [{ data: bubbleData, color: '#0052CC', name: 'Risk Profile' }],
+    legend: { enabled: false },
+    credits: { enabled: false }
+  });
+}
+
+// ============================================================
+// ASSESSMENT FORM
+// ============================================================
+function initAssessmentForm() {
+  // Set today's date
+  if (!document.getElementById('riskDate').value) {
+    document.getElementById('riskDate').value = new Date().toISOString().split('T')[0];
+  }
+
+  // Build rating grid
+  const grid = document.getElementById('ratingGrid');
+  grid.innerHTML = IMPACT_FACTORS.map(f => `
+    <div class="rating-factor">
+      <div>
+        <div class="factor-label">${f.name}</div>
+        <div class="factor-desc">${f.desc}</div>
+      </div>
+      <div class="factor-options">
+        ${f.levels.map((level, i) => `<button class="factor-btn" data-factor="${f.id}" data-level="${i+1}" title="${level}" onclick="selectFactor('${f.id}', ${i+1}, this)">${i+1}</button>`).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  // Build likelihood options
+  document.getElementById('likelihoodOptions').innerHTML = LIKELIHOOD_LEVELS.map(l =>
+    `<button class="factor-btn" data-level="${l.value}" title="${l.desc}" onclick="selectLikelihood(${l.value}, this)">${l.label}</button>`
+  ).join('');
+
+  renderControls();
+  updateScoreDisplay();
+  updateComplianceDisplay();
+}
+
+// Inherent risk (impact/likelihood) state
+let currentRatings = {};
+let currentLikelihood = 0;
+
+// Compliance Mechanism state
+let complianceSliderValue = 0.07; // 0.0000-0.1800, subjective slider position
+let complianceDefectRate = null;  // 0-1 fraction, data-driven mode
+let complianceDefectRiskLevel = 'M';
+
+function selectFactor(factorId, level, el) {
+  el.parentElement.querySelectorAll('.factor-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  currentRatings[factorId] = level;
+  updateScoreDisplay();
+}
+
+function selectLikelihood(value, el) {
+  document.querySelectorAll('#likelihoodOptions .factor-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  currentLikelihood = value;
+  updateScoreDisplay();
+}
+
+// ------------------------------------------------------------
+// Compliance Mechanism UI (Subjective slider + Data Driven inputs)
+// ------------------------------------------------------------
+function switchComplianceMode(mode, el) {
+  currentComplianceMode = mode;
+  el.parentElement.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('complianceSubjectivePanel').style.display = mode === 'subjective' ? 'block' : 'none';
+  document.getElementById('complianceDataDrivenPanel').style.display = mode === 'datadriven' ? 'block' : 'none';
+  updateComplianceDisplay();
+}
+
+function onComplianceSliderInput(rawValue) {
+  complianceSliderValue = Math.min(Math.max(parseInt(rawValue, 10) / 10000, 0), 0.18);
+  updateComplianceDisplay();
+}
+
+function onDefectRateInput(pctValue) {
+  const pct = parseFloat(pctValue);
+  complianceDefectRate = isNaN(pct) ? null : Math.min(Math.max(pct, 0), 100) / 100;
+  complianceDefectRiskLevel = document.getElementById('defectRiskLevelInput').value;
+  updateComplianceDisplay();
+}
+
+function getCurrentComplianceResult() {
+  if (currentComplianceMode === 'datadriven' && complianceDefectRate != null) {
+    return { ...computeRangeScore(complianceDefectRate, complianceDefectRiskLevel), sliderValue: complianceDefectRate };
+  }
+  const r = computeSubjectiveRangeScore(complianceSliderValue);
+  return { ...r, sliderValue: complianceSliderValue };
+}
+
+function updateComplianceDisplay() {
+  const result = getCurrentComplianceResult();
+  document.getElementById('complianceRangeScoreNum').textContent = result.rangeScore.toFixed(4);
+  document.getElementById('complianceRatingBadge').innerHTML = getComplianceBadge(result.code);
+  const pct = Math.round(result.rangePct * 100);
+  document.getElementById('complianceRangeDetail').textContent = `${pct}% into ${complianceLabelFromCode(result.code)} range`;
+
+  if (currentComplianceMode === 'subjective') {
+    const handlePct = (complianceSliderValue / 0.18) * 100;
+    document.getElementById('complianceSliderHandle').style.left = handlePct + '%';
+    document.getElementById('complianceSlider').value = Math.round(complianceSliderValue * 10000);
+  }
+}
+
+function updateScoreDisplay() {
+  const score = calculateScore(currentRatings, currentLikelihood);
+  const rating = getRatingFromScore(score);
+  const plotValue = getRiskScorePlotValue(score);
+
+  document.getElementById('currentScore').textContent = score;
+  document.getElementById('currentRating').innerHTML = getRatingBadge(rating);
+  document.getElementById('scoreBreakdown').textContent = plotValue > 0 ? plotValue.toFixed(4) : '—';
+}
+
+function toggleClosureFields() {
+  const isClosed = document.getElementById('riskStatus').value === 'closed';
+  const closedDateEl = document.getElementById('closedDate');
+  if (isClosed && !closedDateEl.value) {
+    closedDateEl.value = new Date().toISOString().split('T')[0];
+  }
+}
+
+function selectResponse(response, el) {
+  document.querySelectorAll('.response-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  currentResponse = response;
+}
+
+// Controls
+function addControl() {
+  const id = Date.now();
+  currentControls.push({ id, name: '', type: 'Preventive', effectiveness: '', description: '', owner: '', effectiveDate: '', docUrl: '' });
+  renderControls();
+}
+
+function renderControls() {
+  const list = document.getElementById('controlsList');
+  if (currentControls.length === 0) {
+    list.innerHTML = '<p style="font-size:12px;color:var(--color-text-muted,#8993a4);padding:8px;">No controls added. Click "Add Control" to document risk mitigations.</p>';
+    return;
+  }
+  list.innerHTML = currentControls.map((c, i) => `
+    <div class="control-item">
+      <div>
+        <div class="form-grid" style="gap:8px;">
+          <div class="form-group"><label class="form-label">Control Name</label><input class="form-input" placeholder="Control name" value="${escapeHtml(c.name)}" onchange="updateControl(${i}, 'name', this.value)"></div>
+          <div class="form-group"><label class="form-label">Type</label>
+            <select class="form-select" onchange="updateControl(${i}, 'type', this.value)">
+              <option ${c.type==='Preventive'?'selected':''}>Preventive</option>
+              <option ${c.type==='Detective'?'selected':''}>Detective</option>
+              <option ${c.type==='Corrective'?'selected':''}>Corrective</option>
+              <option ${c.type==='Directive'?'selected':''}>Directive</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Effectiveness</label>
+            <select class="form-select" onchange="updateControl(${i}, 'effectiveness', this.value)">
+              <option value="">Effectiveness...</option>
+              <option ${c.effectiveness==='Fully Effective'?'selected':''}>Fully Effective</option>
+              <option ${c.effectiveness==='Substantially Effective'?'selected':''}>Substantially Effective</option>
+              <option ${c.effectiveness==='Partially Effective'?'selected':''}>Partially Effective</option>
+              <option ${c.effectiveness==='Largely Ineffective'?'selected':''}>Largely Ineffective</option>
+              <option ${c.effectiveness==='Not Implemented'?'selected':''}>Not Implemented</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Control Owner</label><input class="form-input" placeholder="Who owns this control" value="${escapeHtml(c.owner || '')}" onchange="updateControl(${i}, 'owner', this.value)"></div>
+          <div class="form-group"><label class="form-label">Effective Date</label><input class="form-input" type="date" value="${escapeHtml(c.effectiveDate || '')}" title="Date the control became effective" onchange="updateControl(${i}, 'effectiveDate', this.value)"></div>
+          <div class="form-group"><label class="form-label">Supporting Documentation URL <span style="color:var(--color-text-muted,#8993a4);font-weight:400;">(optional)</span></label><input class="form-input" type="url" placeholder="https://..." value="${escapeHtml(c.docUrl || '')}" onchange="updateControl(${i}, 'docUrl', this.value)"></div>
+          <div class="form-group full-width"><label class="form-label">Description</label><textarea class="form-textarea" placeholder="Control description..." style="min-height:40px;" onchange="updateControl(${i}, 'description', this.value)">${escapeHtml(c.description)}</textarea></div>
+        </div>
+      </div>
+      <button class="btn btn-sm" style="color:var(--app-error);background:none;border:none;" onclick="removeControl(${i})"><i class="fa-solid fa-trash"></i></button>
+    </div>
+  `).join('');
+}
+
+function updateControl(idx, field, value) { currentControls[idx][field] = value; }
+function removeControl(idx) { currentControls.splice(idx, 1); renderControls(); }
+
+// ============================================================
+// SAVE / LOAD
+// ============================================================
+function saveRisk() {
+  const name = document.getElementById('riskName').value.trim();
+  if (!name) { alert('Please enter a risk name.'); return; }
+
+  const riskScore = calculateScore(currentRatings, currentLikelihood);
+  const complianceResult = getCurrentComplianceResult();
+  const nowIso = new Date().toISOString();
+  const existing = editingRiskId ? risks.find(r => r.id === editingRiskId) : null;
+
+  const risk = {
+    id: editingRiskId || 'risk_' + Date.now(),
+    name: name,
+    category: document.getElementById('riskCategory').value,
+    owner: document.getElementById('riskOwner').value,
+    date: document.getElementById('riskDate').value,
+    country: document.getElementById('riskCountry').value,
+    legalEntity: document.getElementById('riskLegalEntity').value,
+    legislationRef: document.getElementById('riskLegislationRef').value,
+    legislationUrl: document.getElementById('riskLegislationUrl').value,
+    description: document.getElementById('riskDesc').value,
+    tag1: document.getElementById('riskTag1').value,
+    tag2: document.getElementById('riskTag2').value,
+    // Inherent risk (Impact x Likelihood)
+    inherentRatings: { ...currentRatings },
+    inherentLikelihood: currentLikelihood,
+    riskScore: riskScore,
+    impactSum: calculateImpactSum(currentRatings),
+    // Compliance Mechanism rating
+    complianceMode: currentComplianceMode,
+    complianceSliderValue: complianceResult.sliderValue,
+    complianceRangeScore: complianceResult.rangeScore,
+    complianceCode: complianceResult.code,
+    complianceDefectRate: currentComplianceMode === 'datadriven' ? complianceDefectRate : null,
+    complianceDefectRiskLevel: currentComplianceMode === 'datadriven' ? complianceDefectRiskLevel : null,
+    response: currentResponse,
+    responseRationale: document.getElementById('responseRationale').value,
+    controls: [...currentControls],
+    nextStepDesc: document.getElementById('nextStepDesc').value,
+    nextStepOwner: document.getElementById('nextStepOwner').value,
+    nextStepDueDate: document.getElementById('nextStepDueDate').value,
+    status: document.getElementById('riskStatus').value,
+    closureReason: document.getElementById('riskStatus').value === 'closed' ? document.getElementById('closureReason').value : '',
+    closedDate: document.getElementById('riskStatus').value === 'closed' ? document.getElementById('closedDate').value : '',
+    closureNotes: document.getElementById('riskStatus').value === 'closed' ? document.getElementById('closureNotes').value : '',
+    acceptedBy: document.getElementById('acceptedBy').value,
+    acceptanceDate: document.getElementById('acceptanceDate').value,
+    reviewDate: document.getElementById('reviewDate').value,
+    escalationLevel: document.getElementById('escalationLevel').value,
+    acceptanceRationale: document.getElementById('acceptanceRationale').value,
+    // Trend / review tracking
+    history: existing ? [...(existing.history || [])] : [],
+    lastReviewedDate: nowIso,
+    createdAt: existing ? existing.createdAt : nowIso,
+    updatedAt: nowIso
+  };
+
+  // Append a snapshot to history if the Risk Score or Compliance rating
+  // actually changed (or this is the first save), so trend can be tracked
+  // over time per ISO 31000 Clause 6.7 / COSO "Review and Revision"
+  const lastSnapshot = risk.history[risk.history.length - 1];
+  if (!lastSnapshot || lastSnapshot.riskScore !== risk.riskScore || lastSnapshot.complianceCode !== risk.complianceCode) {
+    risk.history.push({ date: nowIso, riskScore: risk.riskScore, complianceCode: risk.complianceCode });
+  }
+
+  if (editingRiskId) {
+    const idx = risks.findIndex(r => r.id === editingRiskId);
+    if (idx >= 0) risks[idx] = risk;
+  } else {
+    risks.push(risk);
+  }
+
+  storageSet('craft_risks', risks);
+  editingRiskId = null;
+  clearForm();
+  showView('register');
+}
+
+function editRisk(id) {
+  const risk = risks.find(r => r.id === id);
+  if (!risk) return;
+
+  editingRiskId = id;
+  showView('assess');
+  document.getElementById('assessTitle').textContent = 'Edit: ' + risk.name;
+  document.getElementById('riskName').value = risk.name || '';
+  document.getElementById('riskCategory').value = risk.category || '';
+  document.getElementById('riskOwner').value = risk.owner || '';
+  document.getElementById('riskDate').value = risk.date || '';
+  document.getElementById('riskCountry').value = risk.country || '';
+  document.getElementById('riskLegalEntity').value = risk.legalEntity || '';
+  document.getElementById('riskLegislationRef').value = risk.legislationRef || '';
+  document.getElementById('riskLegislationUrl').value = risk.legislationUrl || '';
+  document.getElementById('riskDesc').value = risk.description || '';
+  document.getElementById('riskTag1').value = risk.tag1 || '';
+  document.getElementById('riskTag2').value = risk.tag2 || '';
+  document.getElementById('responseRationale').value = risk.responseRationale || '';
+  document.getElementById('nextStepDesc').value = risk.nextStepDesc || '';
+  document.getElementById('nextStepOwner').value = risk.nextStepOwner || '';
+  document.getElementById('nextStepDueDate').value = risk.nextStepDueDate || '';
+  document.getElementById('riskStatus').value = risk.status || 'open';
+  document.getElementById('closureReason').value = risk.closureReason || '';
+  document.getElementById('closedDate').value = risk.closedDate || '';
+  document.getElementById('closureNotes').value = risk.closureNotes || '';
+  document.getElementById('acceptedBy').value = risk.acceptedBy || '';
+  document.getElementById('acceptanceDate').value = risk.acceptanceDate || '';
+  document.getElementById('reviewDate').value = risk.reviewDate || '';
+  document.getElementById('escalationLevel').value = risk.escalationLevel || '';
+  document.getElementById('acceptanceRationale').value = risk.acceptanceRationale || '';
+
+  currentRatings = { ...(risk.inherentRatings || {}) };
+  currentLikelihood = risk.inherentLikelihood || 0;
+  currentResponse = risk.response || '';
+  currentControls = [...(risk.controls || [])];
+
+  currentComplianceMode = risk.complianceMode || 'subjective';
+  complianceSliderValue = risk.complianceSliderValue != null && risk.complianceMode !== 'datadriven' ? risk.complianceSliderValue : 0.07;
+  complianceDefectRate = risk.complianceDefectRate != null ? risk.complianceDefectRate : null;
+  complianceDefectRiskLevel = risk.complianceDefectRiskLevel || 'M';
+
+  // Restore UI state
+  setTimeout(() => {
+    Object.entries(currentRatings).forEach(([factorId, level]) => {
+      const btn = document.querySelector(`.factor-btn[data-factor="${factorId}"][data-level="${level}"]`);
+      if (btn) btn.classList.add('selected');
+    });
+    if (currentLikelihood > 0) {
+      const lBtn = document.querySelector(`#likelihoodOptions .factor-btn[data-level="${currentLikelihood}"]`);
+      if (lBtn) lBtn.classList.add('selected');
+    }
+    if (currentResponse) {
+      document.querySelectorAll('.response-btn').forEach(b => {
+        if (b.textContent.trim().includes(currentResponse)) b.classList.add('selected');
+      });
+    }
+    // Restore compliance mode toggle + inputs
+    document.querySelectorAll('#compliancePanel').forEach(() => {});
+    const complianceToggleBtns = document.querySelectorAll('.card-header .assessment-toggle .toggle-btn');
+    complianceToggleBtns.forEach(b => {
+      const isDataDriven = b.textContent.trim() === 'Data Driven';
+      b.classList.toggle('active', (isDataDriven && currentComplianceMode === 'datadriven') || (!isDataDriven && currentComplianceMode === 'subjective'));
+    });
+    document.getElementById('complianceSubjectivePanel').style.display = currentComplianceMode === 'subjective' ? 'block' : 'none';
+    document.getElementById('complianceDataDrivenPanel').style.display = currentComplianceMode === 'datadriven' ? 'block' : 'none';
+    if (currentComplianceMode === 'datadriven' && complianceDefectRate != null) {
+      document.getElementById('defectRateInput').value = (complianceDefectRate * 100).toString();
+      document.getElementById('defectRiskLevelInput').value = complianceDefectRiskLevel;
+    }
+    renderControls();
+    updateScoreDisplay();
+    updateComplianceDisplay();
+  }, 50);
+}
+
+// ============================================================
+// DELETE / UNDO
+// ============================================================
+let _undoTimer = null;
+let _pendingDelete = null; // { risk, index }
+
+function deleteRisk(id) {
+  const idx = risks.findIndex(r => r.id === id);
+  if (idx === -1) return;
+  const risk = risks[idx];
+  if (!confirm(`Delete "${risk.name || 'this risk'}"? You'll have a few seconds to undo.`)) return;
+
+  risks.splice(idx, 1);
+  storageSet('craft_risks', risks);
+  _pendingDelete = { risk, index: idx };
+
+  showUndoToast(`Deleted "${risk.name || 'risk'}"`, undoDelete);
+
+  // Re-render whichever view is currently active
+  renderRegister();
+  renderDashboard();
+}
+
+function undoDelete() {
+  if (!_pendingDelete) return;
+  const { risk, index } = _pendingDelete;
+  const insertAt = Math.min(index, risks.length);
+  risks.splice(insertAt, 0, risk);
+  storageSet('craft_risks', risks);
+  _pendingDelete = null;
+  hideToast();
+  renderRegister();
+  renderDashboard();
+}
+
+function showUndoToast(message, onUndo) {
+  hideToast();
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.id = 'undoToast';
+  toast.innerHTML = `<span>${escapeHtml(message)}</span><button id="undoToastBtn">Undo</button>`;
+  document.body.appendChild(toast);
+  document.getElementById('undoToastBtn').onclick = () => { onUndo(); };
+  _undoTimer = setTimeout(() => { _pendingDelete = null; hideToast(); }, 8000);
+}
+
+function hideToast() {
+  if (_undoTimer) { clearTimeout(_undoTimer); _undoTimer = null; }
+  const existing = document.getElementById('undoToast');
+  if (existing) existing.remove();
+}
+
+// Quick-close from the Risk Register row, without opening the full assessment
+// form. Prompts for a reason so the closure is still documented.
+function quickCloseRisk(id) {
+  const idx = risks.findIndex(r => r.id === id);
+  if (idx === -1) return;
+  const risk = risks[idx];
+  const reason = prompt(`Close "${risk.name || 'this risk'}"?\n\nEnter a closure reason (e.g. Remediated / Controls Implemented, Transferred, Terminated, Duplicate):`, risk.closureReason || 'Remediated / Controls Implemented');
+  if (reason === null) return; // cancelled
+  risk.status = 'closed';
+  risk.closureReason = reason.trim();
+  risk.closedDate = new Date().toISOString().split('T')[0];
+  risk.lastReviewedDate = new Date().toISOString();
+  storageSet('craft_risks', risks);
+  renderRegister();
+  renderDashboard();
+}
+
+function reopenRisk(id) {
+  const idx = risks.findIndex(r => r.id === id);
+  if (idx === -1) return;
+  const risk = risks[idx];
+  if (!confirm(`Reopen "${risk.name || 'this risk'}"? It will return to active tracking.`)) return;
+  risk.status = 'open';
+  risk.lastReviewedDate = new Date().toISOString();
+  storageSet('craft_risks', risks);
+  renderRegister();
+  renderDashboard();
+}
+
+function clearForm() {
+  document.getElementById('riskName').value = '';
+  document.getElementById('riskCategory').value = '';
+  document.getElementById('riskOwner').value = '';
+  document.getElementById('riskDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('riskCountry').value = '';
+  document.getElementById('riskLegalEntity').value = '';
+  document.getElementById('riskLegislationRef').value = '';
+  document.getElementById('riskLegislationUrl').value = '';
+  document.getElementById('riskDesc').value = '';
+  document.getElementById('riskTag1').value = '';
+  document.getElementById('riskTag2').value = '';
+  document.getElementById('responseRationale').value = '';
+  document.getElementById('nextStepDesc').value = '';
+  document.getElementById('nextStepOwner').value = '';
+  document.getElementById('nextStepDueDate').value = '';
+  document.getElementById('riskStatus').value = 'open';
+  document.getElementById('closureReason').value = '';
+  document.getElementById('closedDate').value = '';
+  document.getElementById('closureNotes').value = '';
+  document.getElementById('acceptedBy').value = '';
+  document.getElementById('acceptanceDate').value = '';
+  document.getElementById('reviewDate').value = '';
+  document.getElementById('escalationLevel').value = '';
+  document.getElementById('acceptanceRationale').value = '';
+  document.getElementById('assessTitle').textContent = 'New Risk Assessment';
+
+  currentRatings = {};
+  currentLikelihood = 0;
+  currentResponse = '';
+  currentControls = [];
+  editingRiskId = null;
+
+  currentComplianceMode = 'subjective';
+  complianceSliderValue = 0.07;
+  complianceDefectRate = null;
+  complianceDefectRiskLevel = 'M';
+  const defectInput = document.getElementById('defectRateInput');
+  if (defectInput) defectInput.value = '';
+
+  document.querySelectorAll('.factor-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.response-btn').forEach(b => b.classList.remove('selected'));
+  const complianceToggleBtns = document.querySelectorAll('.card-header .assessment-toggle .toggle-btn');
+  complianceToggleBtns.forEach(b => b.classList.toggle('active', b.textContent.trim() === 'Subjective'));
+  document.getElementById('complianceSubjectivePanel').style.display = 'block';
+  document.getElementById('complianceDataDrivenPanel').style.display = 'none';
+  renderControls();
+  updateScoreDisplay();
+  updateComplianceDisplay();
+}
+
+// ============================================================
+// NARRATIVE EXPORT
+// ============================================================
+function fmtDate(d) {
+  if (!d) return 'Not set';
+  try { return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  catch(e) { return d; }
+}
+
+// Builds a plain-text MBR-ready narrative from a risk object (either a saved
+// risk from the register, or a draft snapshot of the current form)
+function buildNarrative(risk) {
+  const riskRating = getRatingFromScore(risk.riskScore);
+  const riskRatingLabel = riskRating ? RATING_LABELS[riskRating] : 'Not Rated';
+  const complianceLabel = complianceLabelFromCode(risk.complianceCode);
+  const plotValue = getRiskScorePlotValue(risk.riskScore);
+  const locationBits = [risk.country, risk.legalEntity].filter(Boolean).join(', ');
+
+  const lines = [];
+  lines.push(`RISK: ${risk.name || '(Unnamed Risk)'}${risk.status === 'closed' ? ' [CLOSED]' : ''}`);
+  if (locationBits) lines.push(`Location: ${locationBits}`);
+  if (risk.category) lines.push(`Category: ${risk.category}`);
+  lines.push(`Owner: ${risk.owner || 'Not assigned'}`);
+  lines.push(`Assessment Date: ${fmtDate(risk.date)}`);
+  if (risk.legislationRef || risk.legislationUrl) {
+    lines.push(`Legislation: ${risk.legislationRef || '(reference not specified)'}${risk.legislationUrl ? ' (' + risk.legislationUrl + ')' : ''}`);
+  }
+  if (risk.status === 'closed') {
+    lines.push(`Status: CLOSED on ${fmtDate(risk.closedDate)}${risk.closureReason ? '. Reason: ' + risk.closureReason : ''}`);
+  }
+  lines.push('');
+
+  lines.push('SUMMARY');
+  lines.push(`This risk is currently rated ${riskRatingLabel} (Risk Score: ${risk.riskScore || 0}, plot value ${plotValue.toFixed(2)}/5.00), with a Compliance Mechanism rating of ${complianceLabel}${risk.complianceMode === 'datadriven' && risk.complianceDefectRate != null ? ` (based on a tested defect rate of ${(risk.complianceDefectRate*100).toFixed(2)}%)` : ' (subjective assessment)'}.`);
+  const hist = risk.history || [];
+  if (hist.length >= 2) {
+    const prev = hist[hist.length - 2].riskScore || 0;
+    const curr = hist[hist.length - 1].riskScore || 0;
+    const dir = curr > prev ? 'increased' : (curr < prev ? 'decreased' : 'held steady');
+    lines.push(`Trend: Risk Score has ${dir} from ${prev} to ${curr} since the prior review (${hist.length} data points tracked).`);
+  }
+  lines.push('');
+
+  if (risk.description) {
+    lines.push('RISK DESCRIPTION');
+    lines.push(risk.description);
+    lines.push('');
+  }
+
+  if (risk.response) {
+    lines.push('RISK RESPONSE');
+    lines.push(`Response Strategy: ${risk.response}`);
+    if (risk.responseRationale) lines.push(risk.responseRationale);
+    lines.push('');
+  }
+
+  if (risk.controls && risk.controls.length > 0) {
+    lines.push('CONTROLS IN PLACE');
+    risk.controls.forEach(c => {
+      const bits = [];
+      bits.push(`- ${c.name || '(unnamed control)'} (${c.type}${c.effectiveness ? ', ' + c.effectiveness : ''})`);
+      if (c.owner) bits.push(`  Owner: ${c.owner}`);
+      if (c.effectiveDate) bits.push(`  Effective since: ${fmtDate(c.effectiveDate)}`);
+      if (c.description) bits.push(`  ${c.description}`);
+      if (c.docUrl) bits.push(`  Reference: ${c.docUrl}`);
+      lines.push(bits.join('\n'));
+    });
+    lines.push('');
+  }
+
+  if (risk.nextStepDesc) {
+    lines.push('NEXT STEP');
+    const overdue = risk.nextStepDueDate && new Date(risk.nextStepDueDate) < new Date();
+    lines.push(`${risk.nextStepDesc}. Owner: ${risk.nextStepOwner || 'Not assigned'}, Due: ${fmtDate(risk.nextStepDueDate)}${overdue ? ' (OVERDUE)' : ''}`);
+    lines.push('');
+  }
+
+  if (risk.status === 'closed' && risk.closureNotes) {
+    lines.push('CLOSURE NOTES');
+    lines.push(risk.closureNotes);
+    lines.push('');
+  }
+
+  if (risk.acceptedBy) {
+    lines.push('RISK ACCEPTANCE');
+    lines.push(`Accepted by ${risk.acceptedBy}${risk.escalationLevel ? ' (' + risk.escalationLevel + ')' : ''} on ${fmtDate(risk.acceptanceDate)}. Review due: ${fmtDate(risk.reviewDate)}.`);
+    if (risk.acceptanceRationale) lines.push(risk.acceptanceRationale);
+    lines.push('');
+  }
+
+  return lines.join('\n').trim();
+}
+
+let _narrativeRiskName = 'risk';
+
+function openNarrativeModal(text, riskName) {
+  _narrativeRiskName = (riskName || 'risk').replace(/[^a-z0-9\-_ ]/gi, '').trim() || 'risk';
+  document.getElementById('narrativeText').value = text;
+  document.getElementById('narrativeModal').style.display = 'flex';
+}
+function closeNarrativeModal() {
+  document.getElementById('narrativeModal').style.display = 'none';
+}
+
+// Export narrative for a saved risk (from the Risk Register)
+function exportNarrative(riskId) {
+  const risk = risks.find(r => r.id === riskId);
+  if (!risk) return;
+  openNarrativeModal(buildNarrative(risk), risk.name);
+}
+
+// Export narrative directly from the assessment form, without requiring save first
+function exportNarrativeFromForm() {
+  const name = document.getElementById('riskName').value.trim();
+  if (!name) { alert('Please enter a risk name before exporting a narrative.'); return; }
+  const complianceResult = getCurrentComplianceResult();
+  const draft = {
+    name: name,
+    category: document.getElementById('riskCategory').value,
+    owner: document.getElementById('riskOwner').value,
+    date: document.getElementById('riskDate').value,
+    country: document.getElementById('riskCountry').value,
+    legalEntity: document.getElementById('riskLegalEntity').value,
+    legislationRef: document.getElementById('riskLegislationRef').value,
+    legislationUrl: document.getElementById('riskLegislationUrl').value,
+    description: document.getElementById('riskDesc').value,
+    riskScore: calculateScore(currentRatings, currentLikelihood),
+    complianceMode: currentComplianceMode,
+    complianceCode: complianceResult.code,
+    complianceDefectRate: currentComplianceMode === 'datadriven' ? complianceDefectRate : null,
+    response: currentResponse,
+    responseRationale: document.getElementById('responseRationale').value,
+    controls: [...currentControls],
+    history: (editingRiskId && risks.find(r => r.id === editingRiskId)?.history) || [],
+    nextStepDesc: document.getElementById('nextStepDesc').value,
+    nextStepOwner: document.getElementById('nextStepOwner').value,
+    nextStepDueDate: document.getElementById('nextStepDueDate').value,
+    status: document.getElementById('riskStatus').value,
+    closureReason: document.getElementById('riskStatus').value === 'closed' ? document.getElementById('closureReason').value : '',
+    closedDate: document.getElementById('riskStatus').value === 'closed' ? document.getElementById('closedDate').value : '',
+    closureNotes: document.getElementById('riskStatus').value === 'closed' ? document.getElementById('closureNotes').value : '',
+    acceptedBy: document.getElementById('acceptedBy').value,
+    acceptanceDate: document.getElementById('acceptanceDate').value,
+    reviewDate: document.getElementById('reviewDate').value,
+    escalationLevel: document.getElementById('escalationLevel').value,
+    acceptanceRationale: document.getElementById('acceptanceRationale').value
+  };
+  openNarrativeModal(buildNarrative(draft), name);
+}
+
+function copyNarrative() {
+  const text = document.getElementById('narrativeText').value;
+  const done = () => { const btn = document.querySelector('.modal-footer .btn-primary'); if (btn) { const orig = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied'; setTimeout(() => btn.innerHTML = orig, 1500); } };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+function fallbackCopy(text, done) {
+  const ta = document.getElementById('narrativeText');
+  ta.focus(); ta.select();
+  try { document.execCommand('copy'); if (done) done(); } catch(e) { alert('Copy failed. Please select the text manually.'); }
+}
+
+function downloadNarrative() {
+  const text = document.getElementById('narrativeText').value;
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `craft_risk_narrative_${_narrativeRiskName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function renderControlsLibrary() {
+  const allControls = risks.flatMap(r => (r.controls || []).map(c => ({ ...c, riskName: r.name })));
+  const container = document.getElementById('controlsLibrary');
+  if (allControls.length === 0) {
+    document.getElementById('controlsEmpty').style.display = 'block';
+    return;
+  }
+  document.getElementById('controlsEmpty').style.display = 'none';
+  // Only allow http(s) URLs through to href to block javascript: URI injection
+  const safeUrl = (u) => (u && /^https?:\/\//i.test(u.trim())) ? u.trim() : null;
+  container.innerHTML = `<table class="risk-table"><thead><tr><th>Control</th><th>Type</th><th>Effectiveness</th><th>Owner</th><th>Effective Date</th><th>Risk</th><th>Description</th><th>Docs</th></tr></thead><tbody>
+    ${allControls.map(c => { const url = safeUrl(c.docUrl); return `<tr><td><strong>${escapeHtml(c.name) || '(unnamed)'}</strong></td><td>${escapeHtml(c.type)}</td><td>${escapeHtml(c.effectiveness) || '—'}</td><td>${escapeHtml(c.owner) || '—'}</td><td>${escapeHtml(c.effectiveDate) || '—'}</td><td>${escapeHtml(c.riskName)}</td><td style="max-width:200px;font-size:11px;">${escapeHtml(c.description) || '—'}</td><td>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(url)}"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : '—'}</td></tr>`; }).join('')}
+  </tbody></table>`;
+}
+
+function renderAcceptanceRecords() {
+  const accepted = risks.filter(r => r.acceptedBy);
+  const body = document.getElementById('acceptanceBody');
+  const empty = document.getElementById('acceptanceEmpty');
+  if (accepted.length === 0) { body.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  const today = new Date();
+  body.innerHTML = accepted.map(r => {
+    const overdue = r.reviewDate && new Date(r.reviewDate) < today;
+    return `<tr onclick="editRisk('${r.id}')">
+      <td><strong>${escapeHtml(r.name)}</strong></td>
+      <td>${escapeHtml(r.acceptedBy)}</td>
+      <td>${escapeHtml(r.acceptanceDate) || '—'}</td>
+      <td style="${overdue ? 'color:var(--app-error);font-weight:600;' : ''}">${escapeHtml(r.reviewDate) || '—'} ${overdue ? '⚠️' : ''}</td>
+      <td>${escapeHtml(r.escalationLevel) || '—'}</td>
+      <td>${overdue ? '<span class="badge badge-high">Review Overdue</span>' : '<span class="badge badge-very-low">Active</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+// AGGREGATE RISKS VIEW
+// ============================================================
+function renderAggregatePanel() {
+  const body = document.getElementById('aggregateSelectBody');
+  const empty = document.getElementById('aggregateSelectEmpty');
+  document.getElementById('aggregateResultCard').style.display = 'none';
+
+  const ratedRisks = risks.filter(r => r.riskScore && !isRiskClosed(r));
+  if (ratedRisks.length === 0) {
+    body.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  body.innerHTML = ratedRisks.map(r => `<tr>
+    <td><input type="checkbox" class="agg-select" value="${r.id}" onchange="runAggregation()"></td>
+    <td>${escapeHtml(r.name)}</td>
+    <td>${getRatingBadge(getRatingFromScore(r.riskScore))}</td>
+    <td>${getComplianceBadge(r.complianceCode)}</td>
+  </tr>`).join('');
+}
+
+function runAggregation() {
+  const selectedIds = [...document.querySelectorAll('.agg-select:checked')].map(el => el.value);
+  const card = document.getElementById('aggregateResultCard');
+  if (selectedIds.length < 2) { card.style.display = 'none'; return; }
+
+  const selected = risks.filter(r => selectedIds.includes(r.id));
+  const riskAgg = aggregateRiskScore(selected);
+  const complianceAgg = aggregateComplianceRating(selected);
+
+  card.style.display = 'block';
+  document.getElementById('aggRiskScore').textContent = riskAgg.aggregateScore;
+  document.getElementById('aggRiskRating').innerHTML = getRatingBadge(riskAgg.aggregateRating);
+  document.getElementById('aggComplianceScore').textContent = complianceAgg.aggregate.toFixed(4);
+  document.getElementById('aggComplianceRating').innerHTML = getComplianceBadge(complianceAgg.code);
+
+  document.getElementById('aggregateDetailBody').innerHTML = riskAgg.rows.map((row, i) => {
+    const cRow = complianceAgg.rows[i];
+    return `<tr>
+      <td>${escapeHtml(row.name)}</td>
+      <td style="font-family:var(--font-mono,monospace);">${selected[i].riskScore}</td>
+      <td>${row.groupWeight.toFixed(4)}</td>
+      <td style="font-family:var(--font-mono,monospace);">${row.weightedScore.toFixed(2)}</td>
+      <td style="font-family:var(--font-mono,monospace);">${cRow.rangeScore.toFixed(4)}</td>
+      <td>${cRow.weight.toFixed(4)}</td>
+      <td style="font-family:var(--font-mono,monospace);">${cRow.weighted.toFixed(4)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderSettings() {
+  document.getElementById('appetiteTolerable').value = appetite.tolerable;
+  document.getElementById('appetiteElevated').value = appetite.elevated;
+  document.getElementById('appetiteIntolerable').value = appetite.intolerable;
+
+  const container = document.getElementById('weightSettings');
+  container.innerHTML = IMPACT_FACTORS.map(f => `
+    <div class="form-group">
+      <label class="form-label">${f.name}</label>
+      <input class="form-input" type="number" min="0" max="5" step="0.5" value="${weights[f.id] || 1}" id="weight_${f.id}">
+    </div>
+  `).join('');
+}
+
+function saveAppetite() {
+  appetite = {
+    tolerable: parseInt(document.getElementById('appetiteTolerable').value),
+    elevated: parseInt(document.getElementById('appetiteElevated').value),
+    intolerable: parseInt(document.getElementById('appetiteIntolerable').value)
+  };
+  storageSet('craft_appetite', appetite);
+  alert('Risk appetite thresholds saved.');
+}
+
+function saveWeights() {
+  IMPACT_FACTORS.forEach(f => {
+    weights[f.id] = parseFloat(document.getElementById('weight_' + f.id).value) || 1;
+  });
+  storageSet('craft_weights', weights);
+  alert('Factor weights saved.');
+}
+
+function resetWeights() {
+  IMPACT_FACTORS.forEach(f => { weights[f.id] = 1; });
+  storageSet('craft_weights', weights);
+  renderSettings();
+}
+
+function exportData() {
+  const data = JSON.stringify({ risks, appetite, weights, exportDate: new Date().toISOString() }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `craft_risk_register_export_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Initialize
+setTimeout(function() { showView('dashboard'); }, 100);
+</script>
+</body>
+</html>
